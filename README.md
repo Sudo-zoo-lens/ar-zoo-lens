@@ -1,8 +1,8 @@
-# AR Zoo Navigator 🦁📱
+# AR Zoo Lens 🦁📱
 
 실시간 카메라 위에 방향 안내가 표시되는 **동물원 혼잡도 기반 AR 네비게이션 시스템**입니다.
 
-![AR Navigation Demo](https://img.shields.io/badge/AR-Enabled-brightgreen) ![Mobile](https://img.shields.io/badge/Mobile-Optimized-blue) ![License](https://img.shields.io/badge/License-MIT-yellow)
+![AR Lens Demo](https://img.shields.io/badge/AR-Enabled-brightgreen) ![Mobile](https://img.shields.io/badge/Mobile-Optimized-blue) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ## 📖 프로젝트 개요
 
