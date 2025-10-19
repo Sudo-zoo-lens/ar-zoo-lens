@@ -1,0 +1,171 @@
+.direction-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.direction-arrow-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.direction-arrow {
+  font-size: 120px;
+  font-weight: bold;
+  text-shadow: 0 0 20px currentColor, 0 0 40px currentColor,
+    0 4px 10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease;
+}
+
+.direction-text {
+  font-size: 28px;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 25px;
+  border-radius: 25px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  color: white;
+}
+
+.direction-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px 30px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.direction-destination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.destination-emoji {
+  font-size: 32px;
+}
+
+.destination-name {
+  font-size: 20px;
+  font-weight: bold;
+  color: white;
+}
+
+.direction-distance {
+  font-size: 24px;
+  font-weight: bold;
+  color: #00ffff;
+}
+
+.route-progress {
+  display: flex;
+  gap: 15px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px 20px;
+  border-radius: 30px;
+  backdrop-filter: blur(10px);
+}
+
+.progress-dot {
+  font-size: 28px;
+  opacity: 0.4;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.progress-dot.current {
+  opacity: 1;
+  animation: bounce 1s ease-in-out infinite;
+}
+
+.progress-dot.current::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: #00ff00;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #00ff00;
+}
+
+.progress-dot.next {
+  opacity: 0.8;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.progress-dot.next::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: #00ffff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #00ffff;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+  .direction-arrow {
+    font-size: 80px;
+  }
+
+  .direction-text {
+    font-size: 20px;
+    padding: 8px 20px;
+  }
+
+  .destination-emoji {
+    font-size: 24px;
+  }
+
+  .destination-name {
+    font-size: 16px;
+  }
+
+  .direction-distance {
+    font-size: 18px;
+  }
+
+  .progress-dot {
+    font-size: 20px;
+  }
+}

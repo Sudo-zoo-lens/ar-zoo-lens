@@ -1,0 +1,65 @@
+.camera-view {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 50;
+  background: #000;
+}
+
+.camera-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.camera-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 30px;
+  border-radius: 15px;
+  max-width: 90%;
+}
+
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 15px;
+}
+
+.error-message {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.error-message small {
+  font-size: 12px;
+  font-weight: normal;
+  color: #ff6b6b;
+  display: block;
+  margin-top: 10px;
+}
+
+.error-hint {
+  font-size: 14px;
+  color: #aaa;
+  margin-top: 15px;
+}

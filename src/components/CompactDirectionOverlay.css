@@ -1,0 +1,201 @@
+.compact-direction-overlay {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  max-width: 90vw;
+  pointer-events: auto;
+}
+
+/* 컴팩트 뷰 - 항상 보이는 작은 바 */
+.compact-view {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  padding: 12px 20px;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.compact-view:active {
+  transform: scale(0.95);
+}
+
+.compact-arrow {
+  font-size: 32px;
+  font-weight: bold;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.compact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+}
+
+.compact-destination {
+  font-size: 15px;
+  font-weight: bold;
+  color: white;
+  white-space: nowrap;
+}
+
+.compact-distance {
+  font-size: 13px;
+  color: #00ffff;
+  font-weight: bold;
+}
+
+.expand-indicator {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-left: 5px;
+}
+
+/* 확장 뷰 - 탭하면 나타남 */
+.expanded-view {
+  margin-top: 15px;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(15px);
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+  animation: slideDown 0.3s ease-out;
+}
+
+.expanded-direction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.big-arrow {
+  font-size: 80px;
+  font-weight: bold;
+  text-shadow: 0 0 20px currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.direction-label {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.route-details {
+  margin-top: 15px;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.route-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.route-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.route-step.current {
+  opacity: 1;
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.route-step.next {
+  opacity: 0.8;
+  background: rgba(0, 255, 255, 0.1);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+}
+
+.step-emoji {
+  font-size: 20px;
+}
+
+.step-name {
+  font-size: 14px;
+  color: white;
+  flex: 1;
+}
+
+.route-info {
+  display: flex;
+  justify-content: space-around;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-item {
+  font-size: 14px;
+  color: white;
+  font-weight: bold;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+  .compact-arrow {
+    font-size: 28px;
+  }
+
+  .compact-destination {
+    font-size: 14px;
+  }
+
+  .compact-distance {
+    font-size: 12px;
+  }
+
+  .big-arrow {
+    font-size: 60px;
+  }
+
+  .direction-label {
+    font-size: 18px;
+  }
+}
