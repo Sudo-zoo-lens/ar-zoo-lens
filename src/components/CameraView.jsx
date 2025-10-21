@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import AROverlay from "./AROverlay";
 import "./CameraView.css";
 
-function CameraView({ isActive, children }) {
+function CameraView({
+  isActive,
+  children,
+  showAR = false,
+  userPosition,
+  onAreaSelect,
+  congestionUpdate,
+}) {
   const videoRef = useRef(null);
   const [hasCamera, setHasCamera] = useState(false);
   const [error, setError] = useState(null);
@@ -81,8 +89,22 @@ function CameraView({ isActive, children }) {
         </div>
       )}
 
-      {/* AR 오버레이 (화살표 등) */}
-      {hasCamera && <div className="ar-overlay">{children}</div>}
+      {/* AR 오버레이 */}
+      {hasCamera && showAR && (
+        <AROverlay
+          userPosition={userPosition}
+          onAreaSelect={onAreaSelect}
+          congestionUpdate={congestionUpdate}
+        />
+      )}
+
+      {/* 추가 컨트롤 및 오버레이 (항상 표시) */}
+      {hasCamera && !showAR && <div className="ar-overlay">{children}</div>}
+
+      {/* 지도 보기 버튼 (항상 표시) */}
+      {hasCamera && children && (
+        <div className="camera-controls">{children}</div>
+      )}
     </div>
   );
 }

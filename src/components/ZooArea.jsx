@@ -17,8 +17,9 @@ function ZooArea({ area, onClick, isSelected }) {
     }
   });
 
-  const color = getCongestionColor(area.congestionLevel);
-  const label = getCongestionLabel(area.congestionLevel);
+  const congestionColor = getCongestionColor(area.congestionLevel);
+  const congestionLabel = getCongestionLabel(area.congestionLevel);
+  const categoryColor = area.color || congestionColor; // 카테고리 색상 우선 사용
 
   return (
     <group
@@ -30,32 +31,32 @@ function ZooArea({ area, onClick, isSelected }) {
     >
       {/* 바닥 원형 마커 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <circleGeometry args={[0.8, 32]} />
+        <circleGeometry args={[1.5, 32]} />
         <meshStandardMaterial
-          color={color}
+          color={categoryColor}
           transparent
           opacity={hovered || isSelected ? 0.9 : 0.6}
-          emissive={color}
+          emissive={categoryColor}
           emissiveIntensity={hovered || isSelected ? 0.5 : 0.2}
         />
       </mesh>
 
       {/* 혼잡도 표시 기둥 */}
-      <mesh position={[0, area.congestionLevel * 2, 0]}>
-        <cylinderGeometry args={[0.3, 0.5, area.congestionLevel * 4, 16]} />
+      <mesh position={[0, area.congestionLevel * 1.5, 0]}>
+        <cylinderGeometry args={[0.15, 0.25, area.congestionLevel * 3, 16]} />
         <meshStandardMaterial
-          color={color}
+          color={congestionColor}
           transparent
           opacity={0.7}
-          emissive={color}
+          emissive={congestionColor}
           emissiveIntensity={0.3}
         />
       </mesh>
 
       {/* 상단 아이콘/이모지 */}
       <Text
-        position={[0, area.congestionLevel * 2 + 0.8, 0]}
-        fontSize={0.5}
+        position={[0, area.congestionLevel * 1.5 + 0.8, 0]}
+        fontSize={0.8}
         anchorX="center"
         anchorY="middle"
       >
@@ -65,8 +66,8 @@ function ZooArea({ area, onClick, isSelected }) {
       {/* 구역 이름 */}
       <Text
         position={[0, 0.1, 0]}
-        fontSize={0.15}
-        color="white"
+        fontSize={0.3}
+        color={categoryColor}
         anchorX="center"
         anchorY="middle"
         outlineWidth={0.02}
@@ -77,23 +78,23 @@ function ZooArea({ area, onClick, isSelected }) {
 
       {/* 혼잡도 정보 */}
       <Text
-        position={[0, -0.2, 0]}
-        fontSize={0.12}
-        color={color}
+        position={[0, -0.3, 0]}
+        fontSize={0.2}
+        color={congestionColor}
         anchorX="center"
         anchorY="middle"
         outlineWidth={0.01}
         outlineColor="#000000"
       >
-        {label} ({area.visitors}/{area.capacity})
+        {congestionLabel} ({area.visitors}/{area.capacity})
       </Text>
 
       {/* 호버 시 상세 정보 */}
       {(hovered || isSelected) && (
         <Html
-          position={[0, area.congestionLevel * 2 + 1.5, 0]}
+          position={[0, area.congestionLevel * 1.5 + 1.8, 0]}
           center
-          distanceFactor={5}
+          distanceFactor={10}
         >
           <div
             style={{
@@ -103,7 +104,7 @@ function ZooArea({ area, onClick, isSelected }) {
               borderRadius: "8px",
               fontSize: "14px",
               whiteSpace: "nowrap",
-              border: `2px solid ${color}`,
+              border: `2px solid ${categoryColor}`,
               pointerEvents: "none",
             }}
           >
@@ -114,7 +115,8 @@ function ZooArea({ area, onClick, isSelected }) {
               {area.description}
             </div>
             <div style={{ fontSize: "12px", marginTop: "5px" }}>
-              혼잡도: <span style={{ color }}>{label}</span>
+              혼잡도:{" "}
+              <span style={{ color: congestionColor }}>{congestionLabel}</span>
             </div>
           </div>
         </Html>
@@ -123,7 +125,7 @@ function ZooArea({ area, onClick, isSelected }) {
       {/* 선택 표시 링 */}
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[0.9, 1.1, 32]} />
+          <ringGeometry args={[1.6, 1.9, 32]} />
           <meshBasicMaterial color="#00ffff" />
         </mesh>
       )}

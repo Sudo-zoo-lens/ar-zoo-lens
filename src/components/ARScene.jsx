@@ -1,24 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useThree } from "@react-three/fiber";
 import { OrbitControls, Environment, Text } from "@react-three/drei";
 import ZooArea from "./ZooArea";
 import PathGuide from "./PathGuide";
 import FirstPersonCamera from "./FirstPersonCamera";
-import { zooAreas } from "../data/mockData";
+import { zooAreas, gpsToPosition } from "../data/mockData";
 
 function ARScene({
   selectedDestination,
   onAreaSelect,
   currentPath,
   firstPersonMode = false,
+  userPosition: userGPSPosition,
 }) {
   const [areas, setAreas] = useState(zooAreas);
-  const [userLocation, setUserLocation] = useState("entrance");
   const isPresenting = false; // AR 기능은 나중에 추가
+  const { invalidate } = useThree();
 
-  // 사용자 현재 위치 (입구)
-  const userPosition = areas.find((a) => a.id === userLocation)?.position || [
-    0, 0, 0,
-  ];
+  // GPS 좌표를 3D 좌표로 변환 (메모이제이션)
+  const userPosition = useMemo(() => {
+    if (!userGPSPosition) return [0, 0, 0];
+    return gpsToPosition(userGPSPosition.latitude, userGPSPosition.longitude);
+  }, [userGPSPosition?.latitude, userGPSPosition?.longitude]);
 
   // 실시간 혼잡도 업데이트 시뮬레이션 (10초마다)
   useEffect(() => {
@@ -39,10 +42,16 @@ function ARScene({
           ),
         }))
       );
+      invalidate(); // 변경 시 재렌더링 트리거
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [invalidate]);
+
+  // 위치가 변경되면 재렌더링 트리거
+  useEffect(() => {
+    invalidate();
+  }, [userPosition, invalidate]);
 
   return (
     <>
@@ -68,9 +77,11 @@ function ARScene({
               enablePan={true}
               enableZoom={true}
               enableRotate={true}
-              minDistance={5}
-              maxDistance={30}
-              target={[0, 0, -8]}
+              minDistance={20}
+              maxDistance={100}
+              target={[0, 0, 0]}
+              makeDefault
+              onChange={invalidate}
             />
           )}
         </>
@@ -80,10 +91,10 @@ function ARScene({
       {!isPresenting && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, -0.1, -8]}
+          position={[0, -0.1, 0]}
           receiveShadow
         >
-          <planeGeometry args={[30, 30]} />
+          <planeGeometry args={[200, 200]} />
           <meshStandardMaterial color="#90C890" />
         </mesh>
       )}
@@ -91,20 +102,21 @@ function ARScene({
       {/* 그리드 (참고용) */}
       {!isPresenting && (
         <gridHelper
-          args={[30, 30, "#888888", "#cccccc"]}
-          position={[0, 0, -8]}
+          args={[200, 100, "#888888", "#cccccc"]}
+          position={[0, 0, 0]}
         />
       )}
 
       {/* 타이틀 */}
       <Text
-        position={[0, 3, -8]}
-        fontSize={0.5}
+        position={[15, 8, 0]}
+        fontSize={1}
         color="#ffffff"
         anchorX="center"
         anchorY="middle"
-        outlineWidth={0.05}
+        outlineWidth={0.1}
         outlineColor="#000000"
+        rotation={[0, -Math.PI / 2, 0]}
       >
         🗺️ AR Zoo Lens
       </Text>
@@ -123,33 +135,27 @@ function ARScene({
       {currentPath && <PathGuide path={currentPath} />}
 
       {/* 현재 위치 표시 */}
-      {userLocation && (
-        <group
-          position={
-            areas.find((a) => a.id === userLocation)?.position || [0, 0, 0]
-          }
+      <group position={userPosition}>
+        <mesh position={[0, 3, 0]}>
+          <sphereGeometry args={[0.3, 16, 16]} />
+          <meshStandardMaterial
+            color="#0066ff"
+            emissive="#0066ff"
+            emissiveIntensity={1}
+          />
+        </mesh>
+        <Text
+          position={[0, 4, 0]}
+          fontSize={0.4}
+          color="#ffffff"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.03}
+          outlineColor="#000000"
         >
-          <mesh position={[0, 2, 0]}>
-            <sphereGeometry args={[0.2, 16, 16]} />
-            <meshStandardMaterial
-              color="#0066ff"
-              emissive="#0066ff"
-              emissiveIntensity={1}
-            />
-          </mesh>
-          <Text
-            position={[0, 2.5, 0]}
-            fontSize={0.15}
-            color="#ffffff"
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={0.02}
-            outlineColor="#000000"
-          >
-            📍 현재 위치
-          </Text>
-        </group>
-      )}
+          📍 현재 위치
+        </Text>
+      </group>
     </>
   );
 }

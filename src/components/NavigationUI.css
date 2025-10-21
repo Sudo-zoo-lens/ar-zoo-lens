@@ -43,10 +43,17 @@
   font-weight: bold;
 }
 
+/* 토글 버튼 한 줄 배치 */
+.toggle-buttons-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 /* 목적지 선택 버튼 */
 .destination-toggle {
-  width: 100%;
-  padding: 15px 20px;
+  flex: 1;
+  padding: 12px 20px;
   background: rgba(0, 0, 0, 0.8);
   color: white;
   border: none;
@@ -54,18 +61,74 @@
   font-size: 16px;
   font-weight: bold;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  transition: background 0.3s;
+  gap: 8px;
+  transition: all 0.3s;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .destination-toggle:hover {
   background: rgba(0, 0, 0, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .toggle-icon {
-  font-size: 12px;
+  font-size: 16px;
   transition: transform 0.3s;
+}
+
+/* 모드 전환 버튼 */
+.mode-toggle {
+  padding: 12px 20px;
+  background: rgba(76, 175, 80, 0.9);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.mode-toggle:hover {
+  background: rgba(76, 175, 80, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+/* 범례 토글 버튼 */
+.legend-toggle {
+  flex: 1;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.legend-toggle:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* 목적지 선택 패널 */
@@ -251,6 +314,70 @@
 
 .clear-path-btn:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* 컴팩트 경로 정보 */
+.path-info-compact {
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 10px 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.path-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.path-title {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.path-count {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.path-quick-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.quick-info-item {
+  white-space: nowrap;
+}
+
+.clear-path-btn-compact {
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.clear-path-btn-compact:hover {
+  background: rgba(255, 0, 0, 0.3);
+  border-color: rgba(255, 0, 0, 0.5);
 }
 
 /* 범례 */

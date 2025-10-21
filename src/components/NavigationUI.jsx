@@ -3,6 +3,7 @@ import {
   zooAreas,
   getCongestionColor,
   getCongestionLabel,
+  categoryColors,
 } from "../data/mockData";
 import "./NavigationUI.css";
 
@@ -10,56 +11,76 @@ function NavigationUI({
   selectedDestination,
   onDestinationChange,
   currentPath,
+  firstPersonMode,
+  onModeChange,
+  congestionUpdate,
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [sortBy, setSortBy] = useState("name"); // name, congestion
+  const [sortBy, setSortBy] = useState("name"); // name, congestion, category
+  const [showLegend, setShowLegend] = useState(false);
+  const [, forceUpdate] = useState(0);
+
+  // 혼잡도 업데이트 시 강제 리렌더링
+  useEffect(() => {
+    if (congestionUpdate !== undefined) {
+      forceUpdate((prev) => prev + 1);
+    }
+  }, [congestionUpdate]);
 
   // 정렬된 구역 목록
   const sortedAreas = [...zooAreas]
-    .filter((area) => area.id !== "entrance")
+    .filter((area) => area.id !== "main-gate")
     .sort((a, b) => {
       if (sortBy === "congestion") {
         return a.congestionLevel - b.congestionLevel;
+      } else if (sortBy === "category") {
+        return (a.category || "").localeCompare(b.category || "");
       }
       return a.name.localeCompare(b.name);
     });
 
+  // 카메라 모드일 때는 아무것도 렌더링하지 않음
+  if (firstPersonMode) {
+    return null;
+  }
+
   return (
     <div className="navigation-ui">
-      {/* 상단 정보 바 */}
-      <div className="info-bar">
-        <div className="info-item">
-          <span className="info-label">현재 위치</span>
-          <span className="info-value">📍 입구</span>
-        </div>
-        {currentPath && (
-          <>
-            <div className="info-item">
-              <span className="info-label">예상 시간</span>
-              <span className="info-value">
-                ⏱️ {currentPath.estimatedTime}분
-              </span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">거리</span>
-              <span className="info-value">
-                📏 {currentPath.totalDistance.toFixed(1)}m
-              </span>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* 목적지 선택 버튼 */}
-      <button className="destination-toggle" onClick={() => setIsOpen(!isOpen)}>
-        {selectedDestination
-          ? `🎯 ${
-              zooAreas.find((a) => a.id === selectedDestination)?.name ||
-              "목적지"
-            }`
-          : "🗺️ 목적지 선택"}
-        <span className="toggle-icon">{isOpen ? "▼" : "▶"}</span>
+      {/* 뷰 모드 전환 버튼 */}
+      <button
+        className="mode-toggle"
+        onClick={() => onModeChange(!firstPersonMode)}
+      >
+        📷 카메라 모드
       </button>
+
+      {/* 목적지 선택과 범례 버튼을 한 줄로 */}
+      <div className="toggle-buttons-row">
+        {/* 목적지 선택 버튼 */}
+        <button
+          className="destination-toggle"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <span>
+            {selectedDestination
+              ? `🎯 ${
+                  zooAreas.find((a) => a.id === selectedDestination)?.name ||
+                  "목적지"
+                }`
+              : "🗺️ 목적지 선택"}
+          </span>
+          <span className="toggle-icon">{isOpen ? "▼" : "▶"}</span>
+        </button>
+
+        {/* 범례 토글 버튼 */}
+        <button
+          className="legend-toggle"
+          onClick={() => setShowLegend(!showLegend)}
+        >
+          <span>🎨 범례</span>
+          <span className="toggle-icon">{showLegend ? "▼" : "▶"}</span>
+        </button>
+      </div>
 
       {/* 목적지 선택 패널 */}
       {isOpen && (
@@ -71,6 +92,12 @@ function NavigationUI({
               onClick={() => setSortBy("name")}
             >
               이름순
+            </button>
+            <button
+              className={sortBy === "category" ? "active" : ""}
+              onClick={() => setSortBy("category")}
+            >
+              카테고리순
             </button>
             <button
               className={sortBy === "congestion" ? "active" : ""}
@@ -100,6 +127,18 @@ function NavigationUI({
                   <div className="area-header">
                     <span className="area-emoji">{area.emoji}</span>
                     <span className="area-name">{area.name}</span>
+                    {area.color && (
+                      <div
+                        className="category-indicator"
+                        style={{
+                          width: "8px",
+                          height: "8px",
+                          borderRadius: "50%",
+                          backgroundColor: area.color,
+                          marginLeft: "8px",
+                        }}
+                      />
+                    )}
                   </div>
                   <div className="area-info">
                     <div
@@ -120,72 +159,81 @@ function NavigationUI({
         </div>
       )}
 
-      {/* 경로 정보 */}
-      {currentPath && (
-        <div className="path-info">
-          <h3>📍 경로 안내</h3>
-          <div className="path-steps">
-            {currentPath.areas.map((area, index) => (
-              <div key={area.id} className="path-step">
-                <div className="step-number">{index + 1}</div>
-                <div className="step-content">
-                  <span className="step-emoji">{area.emoji}</span>
-                  <span className="step-name">{area.name}</span>
-                  <span
-                    className="step-congestion"
-                    style={{
-                      color: getCongestionColor(area.congestionLevel),
-                    }}
-                  >
-                    {getCongestionLabel(area.congestionLevel)}
-                  </span>
-                </div>
-              </div>
-            ))}
+      {/* 범례 */}
+      {showLegend && (
+        <div className="legend">
+          <h4>카테고리</h4>
+          <div className="legend-items">
+            <div className="legend-item">
+              <div
+                className="legend-color"
+                style={{ backgroundColor: categoryColors.GATE }}
+              />
+              <span>문</span>
+            </div>
+            <div className="legend-item">
+              <div
+                className="legend-color"
+                style={{ backgroundColor: categoryColors.ANIMAL }}
+              />
+              <span>동물</span>
+            </div>
+            <div className="legend-item">
+              <div
+                className="legend-color"
+                style={{ backgroundColor: categoryColors.FUN }}
+              />
+              <span>재미나라</span>
+            </div>
+            <div className="legend-item">
+              <div
+                className="legend-color"
+                style={{ backgroundColor: categoryColors.FACILITY }}
+              />
+              <span>편의시설</span>
+            </div>
+            <div className="legend-item">
+              <div
+                className="legend-color"
+                style={{ backgroundColor: categoryColors.NATURE }}
+              />
+              <span>자연나라</span>
+            </div>
           </div>
-          <button
-            className="clear-path-btn"
-            onClick={() => onDestinationChange(null)}
-          >
-            경로 지우기
-          </button>
+
+          <h4 style={{ marginTop: "12px" }}>혼잡도</h4>
+          <div className="legend-items">
+            <div className="legend-item">
+              <div
+                className="legend-color"
+                style={{ backgroundColor: "#4CAF50" }}
+              />
+              <span>여유</span>
+            </div>
+            <div className="legend-item">
+              <div
+                className="legend-color"
+                style={{ backgroundColor: "#FFC107" }}
+              />
+              <span>보통</span>
+            </div>
+            <div className="legend-item">
+              <div
+                className="legend-color"
+                style={{ backgroundColor: "#FF9800" }}
+              />
+              <span>혼잡</span>
+            </div>
+            <div className="legend-item">
+              <div
+                className="legend-color"
+                style={{ backgroundColor: "#F44336" }}
+              />
+              <span>매우 혼잡</span>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* 범례 */}
-      <div className="legend">
-        <h4>혼잡도 범례</h4>
-        <div className="legend-items">
-          <div className="legend-item">
-            <div
-              className="legend-color"
-              style={{ backgroundColor: "#4CAF50" }}
-            />
-            <span>여유</span>
-          </div>
-          <div className="legend-item">
-            <div
-              className="legend-color"
-              style={{ backgroundColor: "#FFC107" }}
-            />
-            <span>보통</span>
-          </div>
-          <div className="legend-item">
-            <div
-              className="legend-color"
-              style={{ backgroundColor: "#FF9800" }}
-            />
-            <span>혼잡</span>
-          </div>
-          <div className="legend-item">
-            <div
-              className="legend-color"
-              style={{ backgroundColor: "#F44336" }}
-            />
-            <span>매우 혼잡</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

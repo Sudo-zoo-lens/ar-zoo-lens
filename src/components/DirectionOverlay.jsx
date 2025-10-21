@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { calculateDistance, currentLocation } from "../data/mockData";
 import "./DirectionOverlay.css";
 
 function DirectionOverlay({ currentPath, userPosition = [0, 0, 0] }) {
@@ -13,16 +14,22 @@ function DirectionOverlay({ currentPath, userPosition = [0, 0, 0] }) {
     }
 
     // 다음 목적지 (현재는 첫 번째 웨이포인트)
-    const nextArea = currentPath.areas[1]; // areas[0]은 입구(현재 위치)
+    const nextArea = currentPath.areas[1]; // areas[0]은 정문(현재 위치)
     setNextStop(nextArea);
 
     // 현재 위치에서 다음 목적지까지의 방향 계산
     const dx = nextArea.position[0] - userPosition[0];
     const dz = nextArea.position[2] - userPosition[2];
 
-    // 거리 계산
-    const dist = Math.sqrt(dx * dx + dz * dz);
-    setDistance(dist.toFixed(1));
+    // 실제 GPS 거리 계산 (미터 단위)
+    const currentArea = currentPath.areas[0];
+    const dist = calculateDistance(
+      currentArea.latitude,
+      currentArea.longitude,
+      nextArea.latitude,
+      nextArea.longitude
+    );
+    setDistance(Math.round(dist));
 
     // 각도 계산 (라디안 -> 도)
     let angle = Math.atan2(dx, -dz) * (180 / Math.PI);

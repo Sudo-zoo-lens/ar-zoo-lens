@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { calculateDistance } from "../data/mockData";
 import "./CompactDirectionOverlay.css";
 
 function CompactDirectionOverlay({ currentPath, userPosition = [0, 0, 0] }) {
@@ -18,8 +19,16 @@ function CompactDirectionOverlay({ currentPath, userPosition = [0, 0, 0] }) {
 
     const dx = nextArea.position[0] - userPosition[0];
     const dz = nextArea.position[2] - userPosition[2];
-    const dist = Math.sqrt(dx * dx + dz * dz);
-    setDistance(dist.toFixed(1));
+
+    // 실제 GPS 거리 계산 (미터 단위)
+    const currentArea = currentPath.areas[0];
+    const dist = calculateDistance(
+      currentArea.latitude,
+      currentArea.longitude,
+      nextArea.latitude,
+      nextArea.longitude
+    );
+    setDistance(Math.round(dist));
 
     let angle = Math.atan2(dx, -dz) * (180 / Math.PI);
 

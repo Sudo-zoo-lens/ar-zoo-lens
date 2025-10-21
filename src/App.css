@@ -11,7 +11,8 @@ canvas {
   touch-action: none;
 }
 
-.view-mode-toggle {
+.view-mode-toggle,
+.back-to-map-btn {
   position: fixed;
   bottom: 30px;
   right: 30px;
@@ -19,7 +20,7 @@ canvas {
   font-size: 18px;
   font-weight: bold;
   color: white;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
   border: none;
   border-radius: 50px;
   cursor: pointer;
@@ -29,20 +30,117 @@ canvas {
   pointer-events: auto;
 }
 
-.view-mode-toggle:hover {
+.view-mode-toggle:hover,
+.back-to-map-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
-.view-mode-toggle:active {
+.view-mode-toggle:active,
+.back-to-map-btn:active {
   transform: scale(0.95);
 }
 
 @media (max-width: 768px) {
-  .view-mode-toggle {
+  .view-mode-toggle,
+  .back-to-map-btn {
     bottom: 20px;
     right: 20px;
     padding: 12px 24px;
     font-size: 16px;
+  }
+}
+
+/* 모바일 컨트롤 */
+.mobile-controls {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.mobile-controls.camera-mode {
+  bottom: 100px; /* 지도 보기 버튼과 겹치지 않도록 */
+}
+
+.mobile-controls > * {
+  pointer-events: auto;
+}
+
+.move-horizontal {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.move-btn {
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+  background: rgba(76, 175, 80, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.move-btn:active {
+  transform: scale(0.9);
+  background: rgba(69, 160, 73, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* 데스크톱에서는 호버 효과 */
+@media (hover: hover) {
+  .move-btn:hover {
+    transform: scale(1.05);
+    background: rgba(69, 160, 73, 0.95);
+  }
+}
+
+/* 데스크톱에서는 숨김 */
+@media (min-width: 769px) {
+  .mobile-controls {
+    display: none;
+  }
+}
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+  .move-btn {
+    width: 55px;
+    height: 55px;
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .move-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .mobile-controls {
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .mobile-controls.camera-mode {
+    bottom: 90px;
   }
 }

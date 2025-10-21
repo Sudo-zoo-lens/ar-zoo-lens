@@ -1,0 +1,626 @@
+.map-view-container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+}
+
+.leaflet-map {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* AR 정보 오버레이 */
+.ar-map-overlay {
+  position: absolute;
+  top: 160px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  pointer-events: none;
+}
+
+.ar-info-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.95) 0%,
+    rgba(30, 41, 59, 0.95) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 16px 56px 16px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  pointer-events: auto;
+  animation: slideDown 0.5s ease-out;
+  border: 2px solid rgba(33, 150, 243, 0.3);
+  position: relative;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ar-info-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ar-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.ar-info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ar-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+.ar-value {
+  font-size: 13px;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ar-info-divider {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+}
+
+/* AR 정보 패널 확장 버전 (시설 상세) */
+.ar-info-panel-expanded {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 24px;
+  padding-top: 48px;
+  max-width: 500px;
+  width: 90vw;
+}
+
+.ar-facility-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ar-facility-emoji {
+  font-size: 36px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.ar-facility-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ar-facility-description {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+}
+
+.ar-facility-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.ar-stat-card {
+  flex: 1;
+  min-width: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ar-stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+.ar-stat-value {
+  font-size: 16px;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.ar-navigate-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.ar-navigate-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+}
+
+.ar-navigate-btn:active {
+  transform: translateY(0);
+}
+
+/* AR 안내 취소 버튼 */
+.ar-cancel-btn {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(244, 67, 54, 0.5);
+  background: linear-gradient(
+    135deg,
+    rgba(244, 67, 54, 0.9),
+    rgba(229, 57, 53, 0.9)
+  );
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
+.ar-info-panel:not(.ar-info-panel-expanded) .ar-cancel-btn {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.ar-cancel-btn:hover {
+  transform: scale(1.1);
+  background: linear-gradient(
+    135deg,
+    rgba(244, 67, 54, 1),
+    rgba(229, 57, 53, 1)
+  );
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+  border-color: rgba(244, 67, 54, 0.8);
+}
+
+.ar-info-panel:not(.ar-info-panel-expanded) .ar-cancel-btn:hover {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.ar-cancel-btn:active {
+  transform: scale(0.95);
+}
+
+.ar-info-panel:not(.ar-info-panel-expanded) .ar-cancel-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* 커스텀 마커 스타일 */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.marker-container {
+  position: relative;
+  width: 40px;
+  height: 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* AR 스타일 거리 배지 (혼잡도 색상) */
+.ar-distance-badge {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* 배경색은 인라인 스타일로 혼잡도에 따라 동적 설정 */
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  z-index: 10;
+  animation: glow 2s ease-in-out infinite, float 3s ease-in-out infinite;
+  backdrop-filter: blur(4px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-3px);
+  }
+}
+
+.marker-pin {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50% 50% 50% 0;
+  background-color: #2196f3;
+  transform: rotate(-45deg);
+  left: 0;
+  top: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 0 15px rgba(33, 150, 243, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: bounce 2s ease-in-out infinite;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.marker-emoji {
+  font-size: 20px;
+  transform: rotate(45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marker-shadow {
+  position: absolute;
+  width: 30px;
+  height: 10px;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4), transparent);
+  border-radius: 50%;
+  bottom: 0;
+  left: 5px;
+  animation: shadow 2s ease-in-out infinite;
+  filter: blur(3px);
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: rotate(-45deg) translateY(0);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  }
+  50% {
+    transform: rotate(-45deg) translateY(-10px);
+    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.4));
+  }
+}
+
+@keyframes shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(0.8);
+    opacity: 0.2;
+  }
+}
+
+/* 사용자 위치 마커 */
+.user-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.user-marker-container {
+  position: relative;
+  width: 30px;
+  height: 30px;
+}
+
+.user-marker-dot {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background-color: #2196f3;
+  border: 3px solid white;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+
+.user-marker-pulse {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  background-color: rgba(33, 150, 243, 0.3);
+  border-radius: 50%;
+  top: 0;
+  left: 0;
+  animation: pulse 2s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* 팝업 스타일 */
+.popup-content {
+  min-width: 200px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.popup-emoji {
+  font-size: 24px;
+}
+
+.popup-description {
+  color: #666;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.popup-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.stat-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-weight: 600;
+}
+
+.popup-navigate-btn {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.3s ease;
+}
+
+.popup-navigate-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.popup-navigate-btn:active {
+  transform: translateY(0);
+}
+
+/* Leaflet 팝업 커스터마이징 */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .ar-info-panel {
+    padding: 12px 48px 12px 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+    max-width: 90vw;
+  }
+
+  .ar-info-panel-expanded {
+    padding: 20px;
+    padding-top: 44px;
+  }
+
+  .ar-facility-emoji {
+    font-size: 28px;
+  }
+
+  .ar-facility-name {
+    font-size: 18px;
+  }
+
+  .ar-facility-description {
+    font-size: 13px;
+  }
+
+  .ar-stat-card {
+    min-width: 80px;
+    padding: 10px;
+  }
+
+  .ar-stat-label {
+    font-size: 10px;
+  }
+
+  .ar-stat-value {
+    font-size: 14px;
+  }
+
+  .ar-navigate-btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .ar-cancel-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    right: 12px;
+    top: 12px;
+  }
+
+  .ar-icon {
+    font-size: 20px;
+  }
+
+  .ar-label {
+    font-size: 9px;
+  }
+
+  .ar-value {
+    font-size: 11px;
+  }
+
+  .ar-info-divider {
+    display: none;
+  }
+
+  .marker-pin {
+    width: 35px;
+    height: 35px;
+  }
+
+  .marker-emoji {
+    font-size: 18px;
+  }
+
+  .ar-distance-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .popup-content {
+    min-width: 180px;
+  }
+
+  .popup-header {
+    font-size: 14px;
+  }
+
+  .popup-emoji {
+    font-size: 20px;
+  }
+
+  .popup-description {
+    font-size: 12px;
+  }
+
+  .stat-item {
+    font-size: 12px;
+  }
+}
+
+/* Zoom 컨트롤 스타일 개선 */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: white !important;
+  color: #333 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  margin: 2px !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 20px !important;
+  transition: all 0.2s ease !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: #f5f5f5 !important;
+}
+
+/* Attribution 스타일 */
+.leaflet-control-attribution {
+  font-size: 10px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(5px) !important;
+}

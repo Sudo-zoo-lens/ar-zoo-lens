@@ -32,7 +32,7 @@ function PathGuide({ path }) {
     arrowsRef.current.forEach((arrow, index) => {
       if (arrow) {
         arrow.position.y =
-          0.3 + Math.sin(state.clock.elapsedTime * 2 + index) * 0.1;
+          0.15 + Math.sin(state.clock.elapsedTime * 2 + index) * 0.05;
       }
     });
   });
@@ -61,13 +61,13 @@ function PathGuide({ path }) {
     arrows.push(
       <group
         key={i}
-        position={[midX, 0.3, midZ]}
+        position={[midX, 0.15, midZ]}
         rotation={[0, angle, 0]}
         ref={(el) => (arrowsRef.current[i] = el)}
       >
         {/* 화살표 모양 */}
         <mesh position={[0, 0, 0]}>
-          <coneGeometry args={[0.2, 0.5, 8]} />
+          <coneGeometry args={[0.1, 0.25, 8]} />
           <meshStandardMaterial
             color="#00ffff"
             emissive="#00ffff"
@@ -78,8 +78,8 @@ function PathGuide({ path }) {
         </mesh>
 
         {/* 화살표 꼬리 */}
-        <mesh position={[0, 0, -0.3]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.05, 0.05, 0.4, 8]} />
+        <mesh position={[0, 0, -0.15]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.2, 8]} />
           <meshStandardMaterial
             color="#00ffff"
             emissive="#00ffff"
@@ -111,12 +111,9 @@ function PathGuide({ path }) {
 
       {/* 시작점 마커 */}
       <mesh
-        position={[
-          ...path.areas[0].position.slice(0, 2),
-          path.areas[0].position[2],
-        ]}
+        position={[path.areas[0].position[0], 0.15, path.areas[0].position[2]]}
       >
-        <sphereGeometry args={[0.3, 16, 16]} />
+        <sphereGeometry args={[0.15, 16, 16]} />
         <meshStandardMaterial
           color="#00ff00"
           emissive="#00ff00"
@@ -128,11 +125,11 @@ function PathGuide({ path }) {
       <mesh
         position={[
           path.areas[path.areas.length - 1].position[0],
-          0.5,
+          0.25,
           path.areas[path.areas.length - 1].position[2],
         ]}
       >
-        <sphereGeometry args={[0.4, 16, 16]} />
+        <sphereGeometry args={[0.2, 16, 16]} />
         <meshStandardMaterial
           color="#ff0000"
           emissive="#ff0000"
