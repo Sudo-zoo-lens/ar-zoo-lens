@@ -27,20 +27,20 @@ function ARScene({
   useEffect(() => {
     const interval = setInterval(() => {
       setAreas((prevAreas) =>
-        prevAreas.map((area) => ({
-          ...area,
-          congestionLevel: Math.max(
-            0,
-            Math.min(1, area.congestionLevel + (Math.random() - 0.5) * 0.1)
-          ),
-          visitors: Math.max(
+        prevAreas.map((area) => {
+          const newVisitors = Math.max(
             0,
             Math.min(
-              area.capacity,
+              Math.floor(area.capacity * 1.3),
               area.visitors + Math.floor((Math.random() - 0.5) * 5)
             )
-          ),
-        }))
+          );
+          return {
+            ...area,
+            visitors: newVisitors,
+            congestionLevel: newVisitors / area.capacity,
+          };
+        })
       );
       invalidate(); // 변경 시 재렌더링 트리거
     }, 10000);

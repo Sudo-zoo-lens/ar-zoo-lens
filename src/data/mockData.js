@@ -73,9 +73,8 @@ const zooAreasData = [
     color: categoryColors.GATE,
     latitude: 37.549544,
     longitude: 127.076119,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 100),
     capacity: 100,
+    visitors: Math.floor(Math.random() * 130), // capacity의 130%까지 가능
     description: "동물원 정문 입구",
   },
   {
@@ -86,9 +85,8 @@ const zooAreasData = [
     color: categoryColors.GATE,
     latitude: 37.55065,
     longitude: 127.085055,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 80),
     capacity: 80,
+    visitors: Math.floor(Math.random() * 104), // capacity의 130%까지 가능
     description: "동물원 후문 출구",
   },
   {
@@ -99,9 +97,8 @@ const zooAreasData = [
     color: categoryColors.GATE,
     latitude: 37.546198,
     longitude: 127.084548,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 60),
     capacity: 60,
+    visitors: Math.floor(Math.random() * 78), // capacity의 130%까지 가능
     description: "구의문 출입구",
   },
 
@@ -114,9 +111,8 @@ const zooAreasData = [
     color: categoryColors.ANIMAL,
     latitude: 37.5473265330352,
     longitude: 127.082822587213,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 50),
     capacity: 50,
+    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
     description: "바다동물 전시관",
   },
   {
@@ -127,9 +123,8 @@ const zooAreasData = [
     color: categoryColors.ANIMAL,
     latitude: 37.5479146124793,
     longitude: 127.082568623513,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 50),
     capacity: 50,
+    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
     description: "초식동물 서식지",
   },
   {
@@ -140,9 +135,8 @@ const zooAreasData = [
     color: categoryColors.ANIMAL,
     latitude: 37.5488399906927,
     longitude: 127.083135460948,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 50),
     capacity: 50,
+    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
     description: "맹수들의 마을",
   },
   {
@@ -153,9 +147,8 @@ const zooAreasData = [
     color: categoryColors.ANIMAL,
     latitude: 37.5493545390007,
     longitude: 127.0817327974,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 50),
     capacity: 50,
+    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
     description: "열대동물 전시관",
   },
 
@@ -168,9 +161,8 @@ const zooAreasData = [
     color: categoryColors.FUN,
     latitude: 37.548149821116,
     longitude: 127.077855673325,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 60),
     capacity: 60,
+    visitors: Math.floor(Math.random() * 78), // capacity의 130%까지 가능
     description: "어린이를 위한 정원",
   },
   {
@@ -181,9 +173,8 @@ const zooAreasData = [
     color: categoryColors.FUN,
     latitude: 37.547733817408,
     longitude: 127.08016373868,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 70),
     capacity: 70,
+    visitors: Math.floor(Math.random() * 91), // capacity의 130%까지 가능
     description: "시원한 물놀이 시설",
   },
   {
@@ -194,9 +185,8 @@ const zooAreasData = [
     color: categoryColors.FUN,
     latitude: 37.5509838727564,
     longitude: 127.082822587213, // TODO: 변경 필요
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 80),
     capacity: 80,
+    visitors: Math.floor(Math.random() * 104), // capacity의 130%까지 가능
     description: "신나는 놀이동산",
   },
   {
@@ -207,9 +197,8 @@ const zooAreasData = [
     color: categoryColors.FUN,
     latitude: 37.5495776633293,
     longitude: 127.078219284712,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 50),
     capacity: 50,
+    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
     description: "아름다운 음악분수",
   },
   {
@@ -220,9 +209,8 @@ const zooAreasData = [
     color: categoryColors.FUN,
     latitude: 37.5507516679991,
     longitude: 127.077530197565,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 60),
     capacity: 60,
+    visitors: Math.floor(Math.random() * 78), // capacity의 130%까지 가능
     description: "상상력을 키우는 공간",
   },
 
@@ -235,9 +223,8 @@ const zooAreasData = [
     color: categoryColors.FACILITY,
     latitude: 37.5492570920947,
     longitude: 127.079294007445,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 40),
     capacity: 40,
+    visitors: Math.floor(Math.random() * 52), // capacity의 130%까지 가능
     description: "편의시설",
   },
   {
@@ -248,9 +235,8 @@ const zooAreasData = [
     color: categoryColors.FACILITY,
     latitude: 37.5499261570828,
     longitude: 127.082474652194,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 30),
     capacity: 30,
+    visitors: Math.floor(Math.random() * 39), // capacity의 130%까지 가능
     description: "휴게 공간",
   },
   {
@@ -261,9 +247,8 @@ const zooAreasData = [
     color: categoryColors.FACILITY,
     latitude: 37.5468659265176,
     longitude: 127.084372374435,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 50),
     capacity: 50,
+    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
     description: "카페테리아 및 휴게소",
   },
 
@@ -276,9 +261,8 @@ const zooAreasData = [
     color: categoryColors.NATURE,
     latitude: 37.548643,
     longitude: 127.081047,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 40),
     capacity: 40,
+    visitors: Math.floor(Math.random() * 52), // capacity의 130%까지 가능
     description: "다양한 식물 전시",
   },
   {
@@ -289,9 +273,8 @@ const zooAreasData = [
     color: categoryColors.NATURE,
     latitude: 37.548133,
     longitude: 127.078305,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 30),
     capacity: 30,
+    visitors: Math.floor(Math.random() * 39), // capacity의 130%까지 가능
     description: "생태 연못",
   },
   {
@@ -302,9 +285,8 @@ const zooAreasData = [
     color: categoryColors.NATURE,
     latitude: 37.550513,
     longitude: 127.079498,
-    congestionLevel: Math.random(),
-    visitors: Math.floor(Math.random() * 35),
     capacity: 35,
+    visitors: Math.floor(Math.random() * 46), // capacity의 130%까지 가능
     description: "사계절 정원",
   },
 ];
@@ -313,6 +295,7 @@ const zooAreasData = [
 export const zooAreas = zooAreasData.map((area) => ({
   ...area,
   position: gpsToPosition(area.latitude, area.longitude),
+  congestionLevel: area.visitors / area.capacity,
 }));
 
 // 혼잡도 레벨 정의
@@ -423,16 +406,13 @@ export const findOptimalPath = (startAreaId, endAreaId) => {
 export const updateCongestionLevels = () => {
   // 원본 배열을 직접 수정
   zooAreas.forEach((area) => {
-    area.congestionLevel = Math.max(
-      0,
-      Math.min(1, area.congestionLevel + (Math.random() - 0.5) * 0.15)
-    );
     area.visitors = Math.max(
       0,
       Math.min(
-        area.capacity,
+        Math.floor(area.capacity * 1.3),
         area.visitors + Math.floor((Math.random() - 0.5) * 8)
       )
     );
+    area.congestionLevel = area.visitors / area.capacity;
   });
 };
