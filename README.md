@@ -143,6 +143,31 @@ ar-zoo-lens/
 - ✅ Safari 14.5+ (iOS)
 - ❌ Firefox Mobile (WebRTC 제한)
 
+## 🌐 배포하기
+
+### 추천 플랫폼: Vercel (무료)
+
+가장 쉬운 방법으로 한 번의 클릭으로 배포 가능합니다.
+
+#### 빠른 배포
+
+```bash
+# Vercel CLI 설치
+npm i -g vercel
+
+# 배포
+vercel
+```
+
+또는 [vercel.com](https://vercel.com)에서 GitHub 저장소를 연결하여 배포하세요.
+
+**배포 전 필수 체크:**
+
+- ✅ GitHub에 코드 푸시 완료
+- ✅ `npm run build`가 성공적으로 실행됨
+
+**HTTPS가 자동으로 설정**되어 카메라 접근이 가능합니다.
+
 ## 🚧 알려진 이슈
 
 - ⚠️ HTTP 환경에서는 카메라 접근 불가 (HTTPS 필수)
