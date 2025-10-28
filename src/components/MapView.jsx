@@ -1,14 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Polyline,
-  Circle,
-} from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import "./MapView.css";
 import {
   zooAreas,
@@ -16,53 +8,7 @@ import {
   getCongestionColor,
 } from "../data/mockData";
 
-// Leaflet 기본 아이콘 수정 (번들링 이슈 해결)
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
-
-// 커스텀 아이콘 생성 함수 (AR 느낌의 거리 정보 포함)
-const createCustomIcon = (emoji, color, distance, congestionLevel) => {
-  // 혼잡도에 따른 배지 색상
-  const badgeColor = getCongestionColor(congestionLevel);
-
-  return L.divIcon({
-    className: "custom-marker",
-    html: `
-      <div class="marker-container">
-        <div class="ar-distance-badge" style="background: linear-gradient(135deg, ${badgeColor}ee 0%, ${badgeColor}dd 100%); border-color: ${badgeColor}88;">
-          ${distance}m
-        </div>
-        <div class="marker-pin" style="background-color: ${color}">
-          <span class="marker-emoji">${emoji}</span>
-        </div>
-        <div class="marker-shadow"></div>
-      </div>
-    `,
-    iconSize: [40, 70],
-    iconAnchor: [20, 70],
-    popupAnchor: [0, -70],
-  });
-};
-
-// 사용자 위치 아이콘
-const createUserIcon = () => {
-  return L.divIcon({
-    className: "user-marker",
-    html: `
-      <div class="user-marker-container">
-        <div class="user-marker-dot"></div>
-        <div class="user-marker-pulse"></div>
-      </div>
-    `,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-  });
-};
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 function MapView({
   selectedDestination,
@@ -72,8 +18,9 @@ function MapView({
   onDestinationChange,
   congestionUpdate,
 }) {
-  const mapRef = useRef(null);
-  const [map, setMap] = useState(null);
+  const mapContainer = useRef(null);
+  const map = useRef(null);
+  const markers = useRef([]);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [, forceUpdate] = useState(0);
 
@@ -84,35 +31,250 @@ function MapView({
     }
   }, [congestionUpdate]);
 
-  // 어린이대공원 중심 좌표
-  const centerPosition = [37.549, 127.081];
-
-  // 지도가 로드되면 저장
+  // 지도 초기화
   useEffect(() => {
-    if (mapRef.current) {
-      setMap(mapRef.current);
+    if (map.current || !mapContainer.current) return;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [userPosition.longitude, userPosition.latitude],
+      zoom: 18,
+      pitch: 60, // 포켓몬고 스타일 1인칭 시점
+      bearing: 0, // 방향
+      antialias: true,
+      projection: "globe", // 지구 곡률 표현
+    });
+
+    // 드래그로 지도 이동은 막고 회전만 허용 (기본 회전 제스처 유지)
+    if (map.current.dragPan) {
+      map.current.dragPan.disable();
     }
+
+    // 지도 로드 완료 후 마커 추가
+    map.current.on("load", () => {
+      addMarkers();
+      addRoute();
+    });
+
+    // 커스텀 회전 제스처: 좌클릭/터치 드래그로 회전, 세로 드래그로 피치
+    const canvas = map.current.getCanvas();
+    let isPointerDown = false;
+    let startX = 0;
+    let startY = 0;
+    let startBearing = 0;
+    let startPitch = 0;
+
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+    const onPointerDown = (x, y) => {
+      isPointerDown = true;
+      startX = x;
+      startY = y;
+      startBearing = map.current.getBearing();
+      startPitch = map.current.getPitch();
+      canvas.style.cursor = "grabbing";
+    };
+
+    const onPointerMove = (x, y) => {
+      if (!isPointerDown) return;
+      const dx = x - startX;
+      const dy = y - startY;
+
+      const newBearing = startBearing - dx * 0.3; // 좌우 드래그로 회전
+      const newPitch = clamp(startPitch + dy * 0.2, 0, 80); // 상하 드래그로 피치
+
+      map.current.easeTo({
+        bearing: newBearing,
+        pitch: newPitch,
+        duration: 0,
+      });
+    };
+
+    const onPointerUp = () => {
+      isPointerDown = false;
+      canvas.style.cursor = "grab";
+      updateMarkers();
+    };
+
+    // 마우스 이벤트
+    const handleMouseDown = (e) => onPointerDown(e.clientX, e.clientY);
+    const handleMouseMove = (e) => onPointerMove(e.clientX, e.clientY);
+    const handleMouseUp = () => onPointerUp();
+
+    canvas.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    // 터치 이벤트 (한 손가락)
+    const handleTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      onPointerDown(t.clientX, t.clientY);
+    };
+    const handleTouchMove = (e) => {
+      if (!isPointerDown || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      onPointerMove(t.clientX, t.clientY);
+    };
+    const handleTouchEnd = () => onPointerUp();
+
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd);
+
+    // 회전 시 마커 위치 업데이트
+    map.current.on("rotate", () => {
+      updateMarkers();
+    });
+
+    return () => {
+      // 커스텀 리스너 정리
+      canvas.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      canvas.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+
+      // 마커들 정리
+      markers.current.forEach((marker) => marker.remove());
+      markers.current = [];
+
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
   }, []);
 
-  // 경로가 선택되면 해당 영역으로 지도 이동
+  // 사용자 위치 변경 시 지도 중심 이동
   useEffect(() => {
-    if (map && currentPath) {
-      const pathCoordinates = currentPath.areas.map((area) => [
-        area.latitude,
-        area.longitude,
-      ]);
-      const bounds = L.latLngBounds(pathCoordinates);
-      map.fitBounds(bounds, { padding: [50, 50] });
+    if (map.current) {
+      map.current.setCenter([userPosition.longitude, userPosition.latitude]);
+      updateMarkers();
     }
-  }, [map, currentPath]);
+  }, [userPosition]);
 
-  // 경로 선 좌표
-  const pathLine = currentPath
-    ? currentPath.areas.map((area) => [area.latitude, area.longitude])
-    : [];
+  // 마커 추가 함수
+  const addMarkers = () => {
+    // 기존 마커들 제거
+    markers.current.forEach((marker) => marker.remove());
+    markers.current = [];
+
+    if (!map.current) return;
+
+    zooAreas.forEach((area) => {
+      const distance = Math.round(
+        calculateDistance(
+          userPosition.latitude,
+          userPosition.longitude,
+          area.latitude,
+          area.longitude
+        )
+      );
+
+      const color = getCongestionColor(area.congestionLevel);
+
+      // 커스텀 마커 엘리먼트 생성
+      const el = document.createElement("div");
+      el.className = "custom-marker";
+      el.innerHTML = `
+        <div class="marker-container">
+          <div class="ar-distance-badge" style="background: linear-gradient(135deg, ${color}ee 0%, ${color}dd 100%); border-color: ${color}88;">
+            ${distance}m
+          </div>
+          <div class="marker-pin" style="background-color: ${area.color}">
+            <span class="marker-emoji">${area.emoji}</span>
+          </div>
+          <div class="marker-shadow"></div>
+        </div>
+      `;
+
+      // 클릭 이벤트 추가
+      el.addEventListener("click", () => {
+        setSelectedMarker(area);
+      });
+
+      // Mapbox 마커 생성 및 저장
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([area.longitude, area.latitude])
+        .addTo(map.current);
+
+      markers.current.push(marker);
+    });
+
+    // 사용자 위치 마커는 Mapbox 마커가 아닌 고정 오버레이로 표시
+    // (이렇게 하면 화면 위치에 고정됨)
+  };
+
+  // 마커 업데이트 함수
+  const updateMarkers = () => {
+    addMarkers();
+  };
+
+  // 경로 추가 함수
+  const addRoute = () => {
+    if (!currentPath || !map.current) return;
+
+    const coordinates = currentPath.areas.map((area) => [
+      area.longitude,
+      area.latitude,
+    ]);
+
+    // 기존 경로 제거
+    if (map.current.getLayer("route")) {
+      map.current.removeLayer("route");
+      map.current.removeSource("route");
+    }
+
+    // 경로 라인 추가
+    map.current.addSource("route", {
+      type: "geojson",
+      data: {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates: coordinates,
+        },
+      },
+    });
+
+    // 경로 스타일 추가
+    map.current.addLayer({
+      id: "route",
+      type: "line",
+      source: "route",
+      layout: {
+        "line-join": "round",
+        "line-cap": "round",
+      },
+      paint: {
+        "line-color": "#2196F3",
+        "line-width": 5,
+        "line-opacity": 0.8,
+      },
+    });
+  };
+
+  // 경로 변경 시 업데이트
+  useEffect(() => {
+    if (map.current && currentPath) {
+      addRoute();
+    }
+  }, [currentPath]);
 
   return (
     <div className="map-view-container">
+      {/* 사용자 위치 마커 (고정 오버레이) */}
+      <div className="user-marker-overlay">
+        <div className="user-marker-container">
+          <div className="user-marker-dot"></div>
+          <div className="user-marker-pulse"></div>
+        </div>
+      </div>
+
       {/* AR 정보 오버레이 - 경로 안내 중 */}
       {currentPath && !selectedMarker && (
         <div className="ar-map-overlay">
@@ -238,130 +400,8 @@ function MapView({
         </div>
       )}
 
-      <MapContainer
-        center={centerPosition}
-        zoom={16}
-        ref={mapRef}
-        className="leaflet-map"
-        zoomControl={true}
-        scrollWheelZoom={true}
-      >
-        {/* 지도 타일 레이어 - 일반 지도 */}
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={19}
-        />
-
-        {/* 사용자 현재 위치 */}
-        <Marker
-          position={[userPosition.latitude, userPosition.longitude]}
-          icon={createUserIcon()}
-        >
-          <Popup>
-            <div className="popup-content">
-              <strong>📍 현재 위치</strong>
-            </div>
-          </Popup>
-        </Marker>
-
-        {/* 사용자 위치 주변 원 (반경 표시) */}
-        <Circle
-          center={[userPosition.latitude, userPosition.longitude]}
-          radius={20}
-          pathOptions={{
-            color: "#2196F3",
-            fillColor: "#2196F3",
-            fillOpacity: 0.1,
-            weight: 2,
-          }}
-        />
-
-        {/* 동물원 구역 마커들 (AR 스타일 - 거리 정보 포함) */}
-        {zooAreas.map((area) => {
-          const distance = Math.round(
-            calculateDistance(
-              userPosition.latitude,
-              userPosition.longitude,
-              area.latitude,
-              area.longitude
-            )
-          );
-
-          return (
-            <Marker
-              key={area.id}
-              position={[area.latitude, area.longitude]}
-              icon={createCustomIcon(
-                area.emoji,
-                area.color,
-                distance,
-                area.congestionLevel
-              )}
-              eventHandlers={{
-                click: () => {
-                  setSelectedMarker(area);
-                },
-              }}
-            />
-          );
-        })}
-
-        {/* 경로 선 (AR 네온 스타일) */}
-        {pathLine.length > 0 && (
-          <>
-            {/* 외곽 글로우 효과 */}
-            <Polyline
-              positions={pathLine}
-              pathOptions={{
-                color: "#00E5FF",
-                weight: 10,
-                opacity: 0.3,
-                lineCap: "round",
-                lineJoin: "round",
-              }}
-            />
-            {/* 메인 라인 */}
-            <Polyline
-              positions={pathLine}
-              pathOptions={{
-                color: "#2196F3",
-                weight: 5,
-                opacity: 0.9,
-                dashArray: "15, 10",
-                lineCap: "round",
-                lineJoin: "round",
-              }}
-            />
-          </>
-        )}
-
-        {/* 경로 상의 중간 지점 표시 */}
-        {currentPath &&
-          currentPath.areas.map((area, index) => (
-            <Circle
-              key={`path-${area.id}`}
-              center={[area.latitude, area.longitude]}
-              radius={10}
-              pathOptions={{
-                color:
-                  index === 0
-                    ? "#4CAF50"
-                    : index === currentPath.areas.length - 1
-                    ? "#F44336"
-                    : "#2196F3",
-                fillColor:
-                  index === 0
-                    ? "#4CAF50"
-                    : index === currentPath.areas.length - 1
-                    ? "#F44336"
-                    : "#2196F3",
-                fillOpacity: 0.8,
-                weight: 2,
-              }}
-            />
-          ))}
-      </MapContainer>
+      {/* Mapbox 지도 컨테이너 */}
+      <div ref={mapContainer} className="mapbox-map" />
     </div>
   );
 }

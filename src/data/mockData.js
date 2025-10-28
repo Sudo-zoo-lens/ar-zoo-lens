@@ -1,3 +1,5 @@
+import { findWaypoints } from "./waypoints";
+
 // 카테고리별 색상 정의
 export const categoryColors = {
   GATE: "#2196F3", // 파랑
@@ -184,7 +186,7 @@ const zooAreasData = [
     category: "FUN",
     color: categoryColors.FUN,
     latitude: 37.5509838727564,
-    longitude: 127.082822587213, // TODO: 변경 필요
+    longitude: 127.083834,
     capacity: 80,
     visitors: Math.floor(Math.random() * 104), // capacity의 130%까지 가능
     description: "신나는 놀이동산",
@@ -330,46 +332,82 @@ const getDistance = (pos1, pos2) => {
 };
 
 // 간단한 경로 찾기 알고리즘 (혼잡도 고려)
-export const findOptimalPath = (startAreaId, endAreaId) => {
+export const findOptimalPath = (
+  startAreaId,
+  endAreaId,
+  useWaypoints = true
+) => {
   const startArea = zooAreas.find((area) => area.id === startAreaId);
   const endArea = zooAreas.find((area) => area.id === endAreaId);
 
   if (!startArea || !endArea) return null;
 
-  // 실제로는 더 복잡한 알고리즘을 사용하지만, 여기서는 단순화
-  // 혼잡도가 낮은 경유지를 찾아서 경로 생성
-  const path = [startArea];
+  // 웨이포인트 사용 여부에 따라 다르게 처리
+  let pathPoints = [];
 
-  // 중간 경유지 찾기 (혼잡도가 낮은 곳 우선)
-  const intermediateAreas = zooAreas
-    .filter((area) => area.id !== startAreaId && area.id !== endAreaId)
-    .filter((area) => {
-      // 시작점과 끝점 사이에 있는 구역만 고려
-      const distToStart = getDistance(area.position, startArea.position);
-      const distToEnd = getDistance(area.position, endArea.position);
-      const totalDist = getDistance(startArea.position, endArea.position);
-      return distToStart + distToEnd < totalDist * 1.5;
-    })
-    .sort((a, b) => a.congestionLevel - b.congestionLevel);
+  if (useWaypoints) {
+    // 웨이포인트가 있으면 사용
+    const waypointsBetween = findWaypoints(startAreaId, endAreaId);
 
-  // 혼잡도가 가장 낮은 중간 지점 추가 (옵션)
-  if (intermediateAreas.length > 0 && Math.random() > 0.5) {
-    path.push(intermediateAreas[0]);
+    if (waypointsBetween && waypointsBetween.length > 0) {
+      // 웨이포인트를 3D 좌표로 변환
+      pathPoints = waypointsBetween.map((wp) => ({
+        latitude: wp.latitude,
+        longitude: wp.longitude,
+        position: gpsToPosition(wp.latitude, wp.longitude),
+      }));
+    } else {
+      // 웨이포인트가 없으면 시설들만 사용 (기존 로직)
+      pathPoints = [startArea];
+
+      const intermediateAreas = zooAreas
+        .filter((area) => area.id !== startAreaId && area.id !== endAreaId)
+        .filter((area) => {
+          const distToStart = getDistance(area.position, startArea.position);
+          const distToEnd = getDistance(area.position, endArea.position);
+          const totalDist = getDistance(startArea.position, endArea.position);
+          return distToStart + distToEnd < totalDist * 1.5;
+        })
+        .sort((a, b) => a.congestionLevel - b.congestionLevel);
+
+      if (intermediateAreas.length > 0 && Math.random() > 0.5) {
+        pathPoints.push(intermediateAreas[0]);
+      }
+
+      pathPoints.push(endArea);
+    }
+  } else {
+    // 기존 로직: 시설들만 사용
+    pathPoints = [startArea];
+
+    const intermediateAreas = zooAreas
+      .filter((area) => area.id !== startAreaId && area.id !== endAreaId)
+      .filter((area) => {
+        const distToStart = getDistance(area.position, startArea.position);
+        const distToEnd = getDistance(area.position, endArea.position);
+        const totalDist = getDistance(startArea.position, endArea.position);
+        return distToStart + distToEnd < totalDist * 1.5;
+      })
+      .sort((a, b) => a.congestionLevel - b.congestionLevel);
+
+    if (intermediateAreas.length > 0 && Math.random() > 0.5) {
+      pathPoints.push(intermediateAreas[0]);
+    }
+
+    pathPoints.push(endArea);
   }
 
-  path.push(endArea);
-
   // 실제 GPS 거리 계산 (미터 단위)
-  const totalDist = path.reduce((total, area, index) => {
+  const totalDist = pathPoints.reduce((total, point, index) => {
     if (index === 0) return 0;
-    const prevArea = path[index - 1];
+    const prevPoint = pathPoints[index - 1];
     return (
       total +
       calculateDistance(
-        prevArea.latitude,
-        prevArea.longitude,
-        area.latitude,
-        area.longitude
+        prevPoint.latitude,
+        prevPoint.longitude,
+        point.latitude,
+        point.longitude
       )
     );
   }, 0);
@@ -378,26 +416,29 @@ export const findOptimalPath = (startAreaId, endAreaId) => {
   const walkingSpeedMetersPerMin = 67;
 
   const estimatedTime = Math.ceil(
-    path.reduce((total, area, index) => {
+    pathPoints.reduce((total, point, index) => {
       if (index === 0) return 0;
-      const prevArea = path[index - 1];
+      const prevPoint = pathPoints[index - 1];
       const dist = calculateDistance(
-        prevArea.latitude,
-        prevArea.longitude,
-        area.latitude,
-        area.longitude
+        prevPoint.latitude,
+        prevPoint.longitude,
+        point.latitude,
+        point.longitude
       );
-      // 혼잡도에 따라 이동 시간 증가
-      const congestionMultiplier = 1 + area.congestionLevel * 0.3;
+      // 혼잡도에 따라 이동 시간 증가 (웨이포인트에는 혼잡도 정보가 없으므로 0 처리)
+      const congestionLevel = point.congestionLevel || 0;
+      const congestionMultiplier = 1 + congestionLevel * 0.3;
       return total + (dist / walkingSpeedMetersPerMin) * congestionMultiplier;
     }, 0)
   );
 
   return {
-    areas: path,
+    areas: pathPoints,
     totalDistance: Math.round(totalDist), // 미터 단위
-    avgCongestion:
-      path.reduce((sum, area) => sum + area.congestionLevel, 0) / path.length,
+    avgCongestion: pathPoints.some((p) => p.congestionLevel !== undefined)
+      ? pathPoints.reduce((sum, p) => sum + (p.congestionLevel || 0), 0) /
+        pathPoints.filter((p) => p.congestionLevel !== undefined).length
+      : 0,
     estimatedTime: estimatedTime, // 분 단위
   };
 };

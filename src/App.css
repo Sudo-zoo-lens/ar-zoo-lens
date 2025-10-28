@@ -36,6 +36,100 @@ canvas {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
+/* 카메라 상단 바 */
+.camera-top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  color: #fff;
+  z-index: 1001;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+
+.top-back-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  font-size: 18px;
+  pointer-events: auto;
+}
+
+.camera-status {
+  font-weight: 700;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* 중앙 조준선 */
+.reticle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 80px;
+  height: 80px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+}
+
+/* 하단 캡처 버튼 */
+.camera-capture-btn {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 76px;
+  height: 76px;
+  border-radius: 38px;
+  background: radial-gradient(circle at 30% 30%, #ff6b6b, #e53935);
+  border: 6px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 20px rgba(229, 57, 53, 0.6),
+    inset 0 2px 6px rgba(255, 255, 255, 0.6);
+  z-index: 1001;
+}
+
+/* 지도 모드 하단 중앙 카메라 버튼 */
+.enter-camera-btn {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #3f51b5, #673ab7);
+  border: none;
+  border-radius: 30px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+}
+
+@media (max-width: 480px) {
+  .camera-top-bar {
+    height: 56px;
+  }
+  .reticle {
+    width: 64px;
+    height: 64px;
+  }
+  .camera-capture-btn {
+    width: 68px;
+    height: 68px;
+  }
+}
+
 .view-mode-toggle:active,
 .back-to-map-btn:active {
   transform: scale(0.95);
@@ -51,25 +145,9 @@ canvas {
   }
 }
 
-/* 모바일 컨트롤 */
+/* 모바일 컨트롤 - 비활성화됨 */
 .mobile-controls {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  z-index: 999;
-  pointer-events: none;
-}
-
-.mobile-controls.camera-mode {
-  bottom: 100px; /* 지도 보기 버튼과 겹치지 않도록 */
-}
-
-.mobile-controls > * {
-  pointer-events: auto;
+  display: none !important;
 }
 
 .move-horizontal {

@@ -46,14 +46,6 @@ function NavigationUI({
 
   return (
     <div className="navigation-ui">
-      {/* 뷰 모드 전환 버튼 */}
-      <button
-        className="mode-toggle"
-        onClick={() => onModeChange(!firstPersonMode)}
-      >
-        📷 카메라 모드
-      </button>
-
       {/* 목적지 선택과 범례 버튼을 한 줄로 */}
       <div className="toggle-buttons-row">
         {/* 목적지 선택 버튼 */}

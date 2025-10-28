@@ -192,13 +192,23 @@ function App() {
             )}
           </CameraView>
 
-          {/* 지도 모드로 돌아가기 버튼 (항상 표시) */}
-          <button
-            className="back-to-map-btn"
-            onClick={() => setFirstPersonMode(false)}
-          >
-            🗺️ 지도 보기
-          </button>
+          {/* 카메라 HUD - 포켓몬고 같은 구성 */}
+          <div className="camera-top-bar">
+            <button
+              className="top-back-btn"
+              onClick={() => setFirstPersonMode(false)}
+            >
+              🗺️
+            </button>
+            <div className="camera-status">AR 탐색</div>
+            <div style={{ width: 44 }} />
+          </div>
+
+          {/* 중앙 조준선 */}
+          <div className="reticle" />
+
+          {/* 하단 캡처 버튼 (연출용) */}
+          <button className="camera-capture-btn" onClick={() => {}}></button>
         </>
       )}
 
@@ -226,88 +236,14 @@ function App() {
         />
       )}
 
-      {/* 위치 정보 표시 (디버깅용) */}
+      {/* 지도 모드 하단 중앙 카메라 진입 버튼 */}
       {!firstPersonMode && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "80px",
-            left: "10px",
-            background: "rgba(0, 0, 0, 0.7)",
-            color: "white",
-            padding: "8px 12px",
-            borderRadius: "8px",
-            fontSize: "12px",
-            fontFamily: "monospace",
-            zIndex: 1000,
-          }}
+        <button
+          className="enter-camera-btn"
+          onClick={() => setFirstPersonMode(true)}
         >
-          <div>
-            위치: {userPosition.latitude.toFixed(6)},{" "}
-            {userPosition.longitude.toFixed(6)}
-          </div>
-          <div style={{ fontSize: "10px", marginTop: "4px", opacity: 0.7 }}>
-            WASD/화살표: 동서남북 이동
-          </div>
-        </div>
-      )}
-
-      {/* 모바일 컨트롤 (지도 모드) */}
-      {!firstPersonMode && (
-        <div className="mobile-controls">
-          <button className="move-btn move-up" onClick={() => handleMove("up")}>
-            ▲
-          </button>
-          <div className="move-horizontal">
-            <button
-              className="move-btn move-left"
-              onClick={() => handleMove("left")}
-            >
-              ◀
-            </button>
-            <button
-              className="move-btn move-down"
-              onClick={() => handleMove("down")}
-            >
-              ▼
-            </button>
-            <button
-              className="move-btn move-right"
-              onClick={() => handleMove("right")}
-            >
-              ▶
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 모바일 컨트롤 (카메라 모드) */}
-      {firstPersonMode && (
-        <div className="mobile-controls camera-mode">
-          <button className="move-btn move-up" onClick={() => handleMove("up")}>
-            ▲
-          </button>
-          <div className="move-horizontal">
-            <button
-              className="move-btn move-left"
-              onClick={() => handleMove("left")}
-            >
-              ◀
-            </button>
-            <button
-              className="move-btn move-down"
-              onClick={() => handleMove("down")}
-            >
-              ▼
-            </button>
-            <button
-              className="move-btn move-right"
-              onClick={() => handleMove("right")}
-            >
-              ▶
-            </button>
-          </div>
-        </div>
+          📷 카메라
+        </button>
       )}
     </div>
   );
