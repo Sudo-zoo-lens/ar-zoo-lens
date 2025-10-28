@@ -12,11 +12,11 @@ import {
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 function MapView({
-  selectedDestination,
+  selectedDestinations,
   onAreaSelect,
   currentPath,
   userPosition,
-  onDestinationChange,
+  onDestinationToggle,
   congestionUpdate,
 }) {
   const mapContainer = useRef(null);
@@ -256,10 +256,12 @@ function MapView({
       );
 
       const color = getCongestionColor(area.congestionLevel);
+      const isSelected = selectedDestinations.includes(area.id);
+      const selectedClass = isSelected ? "selected" : "";
 
       // 커스텀 마커 엘리먼트 생성
       const el = document.createElement("div");
-      el.className = "custom-marker";
+      el.className = `custom-marker ${selectedClass}`;
       el.innerHTML = `
         <div class="marker-container">
           <div class="ar-distance-badge" style="background: linear-gradient(135deg, ${color}ee 0%, ${color}dd 100%); border-color: ${color}88;">
@@ -267,6 +269,7 @@ function MapView({
           </div>
           <div class="marker-pin" style="background-color: ${area.color}">
             <span class="marker-emoji">${area.emoji}</span>
+            ${isSelected ? '<div class="selected-indicator">✓</div>' : ""}
           </div>
           <div class="marker-shadow"></div>
         </div>
@@ -275,6 +278,7 @@ function MapView({
       // 클릭 이벤트 추가
       el.addEventListener("click", () => {
         setSelectedMarker(area);
+        onDestinationToggle && onDestinationToggle(area.id);
       });
 
       // Mapbox 마커 생성 및 저장
@@ -387,7 +391,12 @@ function MapView({
             </div>
             <button
               className="ar-cancel-btn"
-              onClick={() => onDestinationChange && onDestinationChange(null)}
+              onClick={() => {
+                // 모든 선택된 목적지 제거
+                selectedDestinations.forEach((destId) => {
+                  onDestinationToggle && onDestinationToggle(destId);
+                });
+              }}
               title="안내 취소"
             >
               ✕

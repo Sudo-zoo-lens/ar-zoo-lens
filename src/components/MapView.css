@@ -540,3 +540,58 @@
   background: rgba(255, 255, 255, 0.8) !important;
   backdrop-filter: blur(5px) !important;
 }
+
+/* 선택된 마커 스타일 */
+.custom-marker.selected .marker-pin {
+  border: 3px solid #0066ff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 102, 255, 0.6);
+  animation: selectedBounce 1.5s ease-in-out infinite;
+}
+
+.custom-marker.selected .ar-distance-badge {
+  background: linear-gradient(135deg, #0066ffee 0%, #0066ffdd 100%) !important;
+  border-color: #0066ff88 !important;
+  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.4), 0 0 20px rgba(0, 102, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.selected-indicator {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 20px;
+  height: 20px;
+  background: #0066ff;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 102, 255, 0.4);
+  animation: checkmarkPulse 2s ease-in-out infinite;
+}
+
+@keyframes selectedBounce {
+  0%,
+  100% {
+    transform: rotate(-45deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-45deg) translateY(-8px);
+  }
+}
+
+@keyframes checkmarkPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 6px rgba(0, 102, 255, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 102, 255, 0.6);
+  }
+}

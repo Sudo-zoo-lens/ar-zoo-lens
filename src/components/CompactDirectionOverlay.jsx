@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { calculateDistance } from "../data/mockData";
 import "./CompactDirectionOverlay.css";
 
-function CompactDirectionOverlay({ currentPath, userPosition = [0, 0, 0] }) {
+function CompactDirectionOverlay({
+  currentPath,
+  userPosition = [0, 0, 0],
+  onClose,
+}) {
   const [direction, setDirection] = useState(null);
   const [distance, setDistance] = useState(0);
   const [nextStop, setNextStop] = useState(null);
@@ -56,6 +60,21 @@ function CompactDirectionOverlay({ currentPath, userPosition = [0, 0, 0] }) {
 
   return (
     <div className="compact-direction-overlay">
+      {/* 닫기 버튼 */}
+      <button 
+        className="close-direction-btn" 
+        onClick={() => {
+          console.log('닫기 버튼 클릭됨');
+          if (onClose) {
+            onClose();
+          } else {
+            console.log('onClose 함수가 없습니다');
+          }
+        }}
+      >
+        ✕
+      </button>
+
       {/* 컴팩트 뷰 - 항상 보임 */}
       <div className="compact-view" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="compact-arrow" style={{ color: config.color }}>

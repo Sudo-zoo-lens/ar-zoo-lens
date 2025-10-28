@@ -8,6 +8,38 @@
   pointer-events: auto;
 }
 
+/* 닫기 버튼 */
+.close-direction-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 0, 0, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 101;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.close-direction-btn:hover {
+  background: rgba(255, 0, 0, 1);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.close-direction-btn:active {
+  transform: scale(0.95);
+}
+
 /* 컴팩트 뷰 - 항상 보이는 작은 바 */
 .compact-view {
   display: flex;

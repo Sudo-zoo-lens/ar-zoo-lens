@@ -9,16 +9,22 @@ import {
   findOptimalPath,
   currentLocation,
   updateCongestionLevels,
+  recommendRoute,
+  checkEventAttendance,
 } from "./data/mockData";
 import "./App.css";
 
 function App() {
-  const [selectedDestination, setSelectedDestination] = useState(null);
+  const [selectedDestinations, setSelectedDestinations] = useState([]); // 다중 목적지
   const [currentPath, setCurrentPath] = useState(null);
   const [firstPersonMode, setFirstPersonMode] = useState(false);
   const [userPosition, setUserPosition] = useState(currentLocation);
   const [congestionUpdate, setCongestionUpdate] = useState(0); // 혼잡도 업데이트 트리거
   const [closePanels, setClosePanels] = useState(false); // 패널 닫기 트리거
+  const [recommendedRoute, setRecommendedRoute] = useState(null); // 추천 경로
+  const [showEventModal, setShowEventModal] = useState(null); // 이벤트 참석 확인 모달
+  const [showTravelConfirmModal, setShowTravelConfirmModal] = useState(null); // 경로 확인 모달
+  const [attendingEvents, setAttendingEvents] = useState(new Set()); // 참석할 이벤트들
 
   // Ref를 사용해서 최신 상태 추적
   const firstPersonModeRef = useRef(firstPersonMode);
@@ -43,26 +49,91 @@ function App() {
     userPositionRef.current = userPosition;
   }, [userPosition]);
 
-  // 목적지 선택 핸들러 (useCallback으로 메모이제이션)
-  const handleDestinationChange = useCallback((areaId) => {
-    setSelectedDestination(areaId);
+  // 다중 목적지 선택 핸들러
+  const handleDestinationToggle = useCallback(
+    (areaId) => {
+      setSelectedDestinations((prev) => {
+        const isSelected = prev.includes(areaId);
+        let newDestinations;
 
-    if (areaId) {
-      // 현재 위치(정문)에서 선택한 목적지까지의 경로 계산
-      const path = findOptimalPath("main-gate", areaId);
-      setCurrentPath(path);
+        if (isSelected) {
+          // 이미 선택된 경우 제거
+          newDestinations = prev.filter((id) => id !== areaId);
+          // 참석 이벤트 목록에서도 제거
+          setAttendingEvents((prevEvents) => {
+            const newSet = new Set(prevEvents);
+            newSet.delete(areaId);
+            return newSet;
+          });
+        } else {
+          // 최대 5개까지만 선택 가능
+          if (prev.length >= 5) {
+            return prev;
+          }
+          newDestinations = [...prev, areaId];
+        }
+
+        // 이벤트가 있는 시설인 경우 참석 여부 확인
+        const eventCheck = checkEventAttendance(areaId, userPosition);
+        if (eventCheck && !isSelected) {
+          setShowEventModal({ areaId, eventCheck });
+          return prev; // 모달에서 확인 후 처리
+        }
+
+        return newDestinations;
+      });
+    },
+    [userPosition]
+  );
+
+  // 이벤트 참석 확인 처리
+  const handleEventAttendance = useCallback(
+    (willAttend) => {
+      if (showEventModal) {
+        if (willAttend) {
+          // 목적지에 추가하고 참석 이벤트 목록에도 추가
+          setSelectedDestinations((prev) => [...prev, showEventModal.areaId]);
+          setAttendingEvents(
+            (prev) => new Set([...prev, showEventModal.areaId])
+          );
+        } else {
+          // 참석하지 않는 경우 참석 이벤트 목록에서 제거 (혹시 있다면)
+          setAttendingEvents((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(showEventModal.areaId);
+            return newSet;
+          });
+        }
+      }
+      setShowEventModal(null);
+    },
+    [showEventModal]
+  );
+
+  // 경로 추천 업데이트
+  useEffect(() => {
+    if (selectedDestinations.length > 0) {
+      const recommendations = recommendRoute(
+        selectedDestinations,
+        userPosition,
+        attendingEvents
+      );
+      setRecommendedRoute(recommendations);
+
+      // 자동으로 경로를 설정하지 않음 - 사용자가 "추천 경로 보기" 및 "이 경로로 이동하시겠습니까?"를 눌러야만 경로 설정
     } else {
+      setRecommendedRoute(null);
       setCurrentPath(null);
     }
-  }, []);
+  }, [selectedDestinations, userPosition, attendingEvents]);
 
   // 구역 선택 핸들러 (3D 씬에서)
   const handleAreaSelect = useCallback(
     (area) => {
       if (area.id === "main-gate") return;
-      handleDestinationChange(area.id);
+      handleDestinationToggle(area.id);
     },
-    [handleDestinationChange]
+    [handleDestinationToggle]
   );
 
   // 키보드로 위치 이동 (throttle 적용)
@@ -236,6 +307,10 @@ function App() {
               <CompactDirectionOverlay
                 currentPath={currentPath}
                 userPosition={[0, 0, 0]}
+                onClose={() => {
+                  console.log("경로 닫기 함수 호출됨");
+                  setCurrentPath(null);
+                }}
               />
             )}
           </CameraView>
@@ -263,24 +338,28 @@ function App() {
       {/* 네비게이션 UI (카메라 모드가 아닐 때만) */}
       {!firstPersonMode && (
         <NavigationUI
-          selectedDestination={selectedDestination}
-          onDestinationChange={handleDestinationChange}
+          selectedDestinations={selectedDestinations}
+          onDestinationToggle={handleDestinationToggle}
           currentPath={currentPath}
+          recommendedRoute={recommendedRoute}
           firstPersonMode={firstPersonMode}
           onModeChange={setFirstPersonMode}
           congestionUpdate={congestionUpdate}
           closePanels={closePanels}
+          onTravelConfirm={setShowTravelConfirmModal}
+          attendingEvents={attendingEvents}
+          lockDestinationPanel={!!showEventModal}
         />
       )}
 
       {/* 지도 뷰 (카메라 모드가 아닐 때만 보임) */}
       {!firstPersonMode && (
         <MapView
-          selectedDestination={selectedDestination}
+          selectedDestinations={selectedDestinations}
           onAreaSelect={handleAreaSelect}
           currentPath={currentPath}
           userPosition={userPosition}
-          onDestinationChange={handleDestinationChange}
+          onDestinationToggle={handleDestinationToggle}
           congestionUpdate={congestionUpdate}
         />
       )}
@@ -293,6 +372,130 @@ function App() {
         >
           📷 카메라
         </button>
+      )}
+
+      {/* 이벤트 참석 확인 모달 */}
+      {showEventModal && (
+        <div className="event-modal-overlay">
+          <div className="event-modal">
+            <h3>🎉 이벤트 참석 확인</h3>
+            <div className="event-info">
+              <h4>{showEventModal.eventCheck.event.name}</h4>
+              <p>{showEventModal.eventCheck.event.description}</p>
+              <div className="event-time">
+                <span>
+                  ⏰ 시작 시간: {showEventModal.eventCheck.event.startTime}
+                </span>
+                <span>
+                  📍 도착 예정: {showEventModal.eventCheck.arrivalTime}
+                </span>
+              </div>
+              {showEventModal.eventCheck.canArriveOnTime ? (
+                <p className="success">✅ 시간 내 도착 가능합니다!</p>
+              ) : (
+                <p className="warning">⚠️ 이벤트 시작 후 도착 예정입니다.</p>
+              )}
+            </div>
+            <div className="modal-buttons">
+              <button
+                className="btn-secondary"
+                onClick={() => handleEventAttendance(false)}
+              >
+                취소
+              </button>
+              <button
+                className="btn-primary"
+                onClick={() => handleEventAttendance(true)}
+              >
+                참석하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 경로 확인 모달 */}
+      {showTravelConfirmModal && (
+        <div className="travel-modal-overlay">
+          <div className="travel-modal">
+            <h3>🚶 이 경로로 이동하시겠습니까?</h3>
+            <div className="travel-info">
+              <p className="travel-description">
+                선택하신 {selectedDestinations.length}개 장소를 최적 순서로
+                안내합니다. 이벤트 시간과 혼잡도를 고려하여 경로를 추천했습니다.
+              </p>
+              {recommendedRoute && recommendedRoute.length > 0 && (
+                <div className="travel-route">
+                  <h4 className="route-title">📋 추천 경로 순서</h4>
+                  {recommendedRoute.slice(0, 5).map((dest, index) => (
+                    <div key={dest.id} className="route-item">
+                      <span className="route-number">{index + 1}</span>
+                      <span className="route-emoji">{dest.emoji}</span>
+                      <span className="route-name">{dest.name}</span>
+                      {dest.hasEvent && (
+                        <span className="event-tag">🎉 이벤트</span>
+                      )}
+                      <span className="route-distance">
+                        📍{" "}
+                        {Math.round(
+                          Math.sqrt(
+                            Math.pow(
+                              dest.latitude - currentLocation.latitude,
+                              2
+                            ) +
+                              Math.pow(
+                                dest.longitude - currentLocation.longitude,
+                                2
+                              )
+                          ) * 111320
+                        )}
+                        m
+                      </span>
+                    </div>
+                  ))}
+                  {recommendedRoute.length > 5 && (
+                    <div className="route-more">
+                      외 {recommendedRoute.length - 5}개 장소 더...
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="route-benefits">
+                <h4 className="benefits-title">✨ 이 경로의 장점</h4>
+                <ul className="benefits-list">
+                  <li>🎯 이벤트 시간에 맞춘 최적 순서</li>
+                  <li>🚶‍♂️ 혼잡도가 낮은 경로 우선</li>
+                  <li>📏 가장 가까운 거리로 이동</li>
+                  <li>⏰ 총 이동 시간 최소화</li>
+                </ul>
+              </div>
+            </div>
+            <div className="modal-buttons">
+              <button
+                className="btn-secondary"
+                onClick={() => setShowTravelConfirmModal(null)}
+              >
+                취소
+              </button>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  // 경로 안내 시작
+                  if (recommendedRoute && recommendedRoute.length > 0) {
+                    const path = findOptimalPath(
+                      "main-gate",
+                      recommendedRoute[0].id
+                    );
+                    setCurrentPath(path);
+                  }
+                  setShowTravelConfirmModal(null);
+                }}
+              >
+                🚶 경로 안내 시작
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
