@@ -18,6 +18,7 @@ function App() {
   const [firstPersonMode, setFirstPersonMode] = useState(false);
   const [userPosition, setUserPosition] = useState(currentLocation);
   const [congestionUpdate, setCongestionUpdate] = useState(0); // 혼잡도 업데이트 트리거
+  const [closePanels, setClosePanels] = useState(false); // 패널 닫기 트리거
 
   // Ref를 사용해서 최신 상태 추적
   const firstPersonModeRef = useRef(firstPersonMode);
@@ -75,6 +76,12 @@ function App() {
         return;
       }
 
+      // NavigationUI 내부에서 발생한 키 입력은 무시 (패널 닫지 않음)
+      const navEl = document.querySelector(".navigation-ui");
+      if (navEl && navEl.contains(event.target)) {
+        return;
+      }
+
       const key = event.key.toLowerCase();
 
       // 영어 + 한글 키 매핑 (한글: ㅈ=w, ㄴ=s, ㅁ=a, ㄷ=d)
@@ -94,6 +101,9 @@ function App() {
       ];
 
       if (validKeys.includes(key)) {
+        // 키보드 이동 상호작용 시 패널 닫기
+        setClosePanels((prev) => !prev);
+
         event.preventDefault();
         event.stopPropagation();
 
@@ -171,6 +181,44 @@ function App() {
     });
   }, []);
 
+  // 터치/마우스 이벤트 시 패널 닫기 (NavigationUI 외부에서만)
+  useEffect(() => {
+    const isInsideNavigationUI = (target) => {
+      const path =
+        (target && (target.composedPath ? target.composedPath() : null)) || [];
+      if (Array.isArray(path) && path.length) {
+        return path.some(
+          (el) => el && el.classList && el.classList.contains("navigation-ui")
+        );
+      }
+      let node = target;
+      while (node) {
+        if (node.classList && node.classList.contains("navigation-ui"))
+          return true;
+        node = node.parentElement;
+      }
+      return false;
+    };
+
+    const handlePointerStart = (event) => {
+      if (isInsideNavigationUI(event.target)) return; // UI 내부 클릭/터치는 무시
+      setClosePanels((prev) => !prev);
+    };
+
+    // 터치 이벤트 리스너 추가
+    window.addEventListener("touchstart", handlePointerStart, {
+      passive: true,
+    });
+
+    // 마우스 클릭 이벤트도 추가 (데스크톱용)
+    window.addEventListener("mousedown", handlePointerStart);
+
+    return () => {
+      window.removeEventListener("touchstart", handlePointerStart);
+      window.removeEventListener("mousedown", handlePointerStart);
+    };
+  }, []);
+
   return (
     <div className="app">
       {/* 카메라 뷰 (네비게이션 모드일 때) */}
@@ -221,6 +269,7 @@ function App() {
           firstPersonMode={firstPersonMode}
           onModeChange={setFirstPersonMode}
           congestionUpdate={congestionUpdate}
+          closePanels={closePanels}
         />
       )}
 

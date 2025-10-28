@@ -26,7 +26,7 @@ canvas {
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
-  z-index: 1000;
+  z-index: 100;
   pointer-events: auto;
 }
 
@@ -48,7 +48,7 @@ canvas {
   justify-content: space-between;
   padding: 0 12px;
   color: #fff;
-  z-index: 1001;
+  z-index: 101;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
   pointer-events: none;
 }
@@ -80,7 +80,7 @@ canvas {
   border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
-  z-index: 1000;
+  z-index: 100;
 }
 
 /* 하단 캡처 버튼 */
@@ -96,7 +96,7 @@ canvas {
   border: 6px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 6px 20px rgba(229, 57, 53, 0.6),
     inset 0 2px 6px rgba(255, 255, 255, 0.6);
-  z-index: 1001;
+  z-index: 101;
 }
 
 /* 지도 모드 하단 중앙 카메라 버튼 */
@@ -113,7 +113,7 @@ canvas {
   border: none;
   border-radius: 30px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  z-index: 100;
 }
 
 @media (max-width: 480px) {

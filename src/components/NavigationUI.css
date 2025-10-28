@@ -10,6 +10,78 @@
     sans-serif;
 }
 
+/* 왼쪽 위 작은 메뉴 버튼 */
+.menu-toggle-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+}
+
+.menu-toggle-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.menu-icon {
+  font-size: 24px;
+}
+
+/* 메뉴 패널 */
+.menu-panel {
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  min-width: 200px;
+}
+
+/* 메뉴 아이템 버튼 */
+.menu-item-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.menu-item-btn:last-child {
+  margin-bottom: 0;
+}
+
+.menu-item-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(4px);
+}
+
 /* 상단 정보 바 */
 .info-bar {
   background: linear-gradient(
@@ -43,38 +115,6 @@
   font-weight: bold;
 }
 
-/* 토글 버튼 한 줄 배치 */
-.toggle-buttons-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-/* 목적지 선택 버튼 */
-.destination-toggle {
-  flex: 1;
-  padding: 12px 20px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.destination-toggle:hover {
-  background: rgba(0, 0, 0, 0.9);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
 .toggle-icon {
   font-size: 16px;
   transition: transform 0.3s;
@@ -106,46 +146,114 @@
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
 }
 
-/* 범례 토글 버튼 */
-.legend-toggle {
-  flex: 1;
-  padding: 12px 20px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  border: none;
+/* 배경 오버레이 */
+.panel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 9998;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.legend-toggle:hover {
-  background: rgba(0, 0, 0, 0.9);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* 목적지 선택 패널 */
 .destination-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(255, 255, 255, 0.98);
-  max-height: 500px;
   overflow-y: auto;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 9999; /* 최상위로 설정 - 모든 요소보다 앞에 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 패널 헤더 */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: rgba(240, 240, 240, 0.95);
+  border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.close-btn {
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #ff4444;
+  transition: all 0.3s;
+}
+
+.close-btn:hover {
+  background: rgba(255, 0, 0, 0.2);
+  border-color: rgba(255, 0, 0, 0.5);
+  transform: scale(1.1);
+}
+
+/* 카테고리 필터 */
+.category-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 20px;
+  background: rgba(240, 240, 240, 0.95);
+  border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
+}
+
+.category-filter-btn {
+  padding: 8px 12px;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.category-filter-btn.active {
+  background: #0066ff;
+  color: white;
+  border-color: #0066ff;
+}
+
+.category-filter-btn:hover {
+  border-color: #0066ff;
+  transform: translateY(-1px);
 }
 
 /* 정렬 옵션 */
 .sort-options {
   display: flex;
   gap: 10px;
-  padding: 15px;
+  padding: 20px;
   background: rgba(240, 240, 240, 0.95);
   border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
 }
 
 .sort-options button {
@@ -172,7 +280,9 @@
 
 /* 구역 리스트 */
 .area-list {
-  padding: 10px;
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .area-item {
@@ -382,10 +492,16 @@
 
 /* 범례 */
 .legend {
-  background: rgba(0, 0, 0, 0.8);
+  position: fixed;
+  top: 180px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.9);
   color: white;
   padding: 15px;
-  margin-top: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  max-width: 350px;
+  z-index: 9999; /* 최상위로 설정 */
 }
 
 .legend h4 {
@@ -437,6 +553,48 @@
     max-width: 100%;
   }
 
+  .menu-toggle-btn {
+    width: 45px;
+    height: 45px;
+    top: 15px;
+    left: 15px;
+  }
+
+  .menu-panel {
+    top: 70px;
+    left: 15px;
+    min-width: 180px;
+  }
+
+  .destination-panel {
+    /* 전체 화면이므로 위치 조정 불필요 */
+  }
+
+  .legend {
+    top: 160px;
+    left: 15px;
+    max-width: calc(100vw - 30px);
+  }
+
+  .panel-header,
+  .category-filters,
+  .sort-options {
+    padding: 15px;
+  }
+
+  .area-list {
+    padding: 15px;
+  }
+
+  .category-filters {
+    gap: 6px;
+  }
+
+  .category-filter-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
   .info-bar {
     padding: 10px;
   }
@@ -447,11 +605,6 @@
 
   .info-value {
     font-size: 12px;
-  }
-
-  .destination-toggle {
-    padding: 12px 15px;
-    font-size: 14px;
   }
 
   .area-emoji {
