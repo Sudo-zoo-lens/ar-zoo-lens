@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./MapView.css";
+import Joystick from "./Joystick";
 import {
   zooAreas,
   calculateDistance,
@@ -23,6 +24,7 @@ function MapView({
   const markers = useRef([]);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [, forceUpdate] = useState(0);
+  const moveInterval = useRef(null);
 
   // 혼잡도 업데이트 시 강제 리렌더링
   useEffect(() => {
@@ -30,6 +32,79 @@ function MapView({
       forceUpdate((prev) => prev + 1);
     }
   }, [congestionUpdate]);
+
+  // 조이스틱 이동 핸들러
+  const handleJoystickMove = (direction) => {
+    if (!map.current) return;
+
+    // 기존 이동 인터벌 정리
+    if (moveInterval.current) {
+      clearInterval(moveInterval.current);
+      moveInterval.current = null;
+    }
+
+    // 조이스틱이 중앙에 있으면 이동 중지
+    if (direction.x === 0 && direction.y === 0) {
+      return;
+    }
+
+    // 이동 속도 설정 (조이스틱 값에 비례)
+    const moveSpeed = 0.00001; // 지도 좌표 단위로 이동
+
+    // 현재 지도 중심점과 회전각 가져오기
+    const currentCenter = map.current.getCenter();
+    const currentBearing = map.current.getBearing(); // 현재 바라보는 방향 (도 단위)
+
+    // 회전각을 라디안으로 변환
+    const bearingRad = (currentBearing * Math.PI) / 180;
+
+    // 조이스틱 방향을 현재 바라보는 방향 기준으로 변환
+    // X축: 좌우 이동 (bearing에 따라 회전)
+    // Y축: 앞뒤 이동 (bearing에 따라 회전)
+    const moveX =
+      (direction.x * Math.cos(bearingRad) -
+        direction.y * Math.sin(bearingRad)) *
+      moveSpeed;
+    const moveY =
+      (direction.x * Math.sin(bearingRad) +
+        direction.y * Math.cos(bearingRad)) *
+      moveSpeed;
+
+    // 새로운 중심점 계산
+    const newCenter = [
+      currentCenter.lng + moveX,
+      currentCenter.lat - moveY, // Y축은 반대 방향
+    ];
+
+    // 지도 중심점 부드럽게 이동
+    map.current.easeTo({
+      center: newCenter,
+      duration: 100, // 빠른 반응을 위한 짧은 지속시간
+    });
+
+    // 연속 이동을 위한 인터벌 설정
+    moveInterval.current = setInterval(() => {
+      const currentCenter = map.current.getCenter();
+      const currentBearing = map.current.getBearing();
+      const bearingRad = (currentBearing * Math.PI) / 180;
+
+      const moveX =
+        (direction.x * Math.cos(bearingRad) -
+          direction.y * Math.sin(bearingRad)) *
+        moveSpeed;
+      const moveY =
+        (direction.x * Math.sin(bearingRad) +
+          direction.y * Math.cos(bearingRad)) *
+        moveSpeed;
+
+      const newCenter = [currentCenter.lng + moveX, currentCenter.lat - moveY];
+
+      map.current.easeTo({
+        center: newCenter,
+        duration: 100,
+      });
+    }, 50); // 50ms마다 이동
+  };
 
   // 지도 초기화
   useEffect(() => {
@@ -136,6 +211,12 @@ function MapView({
       canvas.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
+
+      // 이동 인터벌 정리
+      if (moveInterval.current) {
+        clearInterval(moveInterval.current);
+        moveInterval.current = null;
+      }
 
       // 마커들 정리
       markers.current.forEach((marker) => marker.remove());
@@ -402,6 +483,9 @@ function MapView({
 
       {/* Mapbox 지도 컨테이너 */}
       <div ref={mapContainer} className="mapbox-map" />
+
+      {/* 조이스틱 컨트롤 */}
+      <Joystick onMove={handleJoystickMove} />
     </div>
   );
 }

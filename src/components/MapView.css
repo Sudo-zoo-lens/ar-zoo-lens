@@ -364,9 +364,9 @@
 /* 사용자 위치 마커 오버레이 */
 .user-marker-overlay {
   position: absolute;
-  bottom: 30%;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 1000;
   pointer-events: none;
 }

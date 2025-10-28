@@ -1,0 +1,160 @@
+/* 조이스틱 컨테이너 */
+.joystick-container {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+/* 조이스틱 베이스 (외부 원) */
+.joystick-base {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.9) 0%,
+    rgba(30, 41, 59, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.joystick-base:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.joystick-base:active {
+  transform: scale(0.95);
+}
+
+/* 조이스틱 노브 (내부 원) */
+.joystick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(33, 150, 243, 0.9) 0%,
+    rgba(21, 101, 192, 0.9) 100%
+  );
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4),
+    0 0 20px rgba(33, 150, 243, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.joystick-knob:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(33, 150, 243, 1) 0%,
+    rgba(21, 101, 192, 1) 100%
+  );
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.5),
+    0 0 25px rgba(33, 150, 243, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.joystick-knob:active {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(0.9);
+}
+
+/* 조이스틱 방향 표시 */
+.joystick-base::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 20px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+}
+
+.joystick-base::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .joystick-container {
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .joystick-base {
+    width: 100px;
+    height: 100px;
+  }
+
+  .joystick-knob {
+    width: 35px;
+    height: 35px;
+  }
+}
+
+@media (max-width: 480px) {
+  .joystick-container {
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .joystick-base {
+    width: 90px;
+    height: 90px;
+  }
+
+  .joystick-knob {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* 애니메이션 효과 */
+@keyframes joystickGlow {
+  0%,
+  100% {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(33, 150, 243, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+}
+
+.joystick-base:hover {
+  animation: joystickGlow 2s ease-in-out infinite;
+}
