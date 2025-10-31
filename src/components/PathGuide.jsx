@@ -6,7 +6,6 @@ function PathGuide({ path }) {
   const lineRef = useRef();
   const arrowsRef = useRef([]);
 
-  // 경로 라인 생성
   const lineGeometry = useMemo(() => {
     if (!path || path.areas.length < 2) return null;
 
@@ -20,15 +19,12 @@ function PathGuide({ path }) {
     return new THREE.BufferGeometry().setFromPoints(curvePoints);
   }, [path]);
 
-  // 화살표 애니메이션
   useFrame((state) => {
     if (lineRef.current) {
-      // 라인이 흐르는 효과
       lineRef.current.material.opacity =
         0.6 + Math.sin(state.clock.elapsedTime * 2) * 0.2;
     }
 
-    // 화살표 회전 애니메이션
     arrowsRef.current.forEach((arrow, index) => {
       if (arrow) {
         arrow.position.y =
@@ -39,17 +35,14 @@ function PathGuide({ path }) {
 
   if (!path || path.areas.length < 2) return null;
 
-  // 화살표 생성 (각 구간마다)
   const arrows = [];
   for (let i = 0; i < path.areas.length - 1; i++) {
     const start = path.areas[i].position;
     const end = path.areas[i + 1].position;
 
-    // 중간 지점
     const midX = (start[0] + end[0]) / 2;
     const midZ = (start[2] + end[2]) / 2;
 
-    // 방향 계산
     const direction = new THREE.Vector3(
       end[0] - start[0],
       0,
@@ -65,7 +58,6 @@ function PathGuide({ path }) {
         rotation={[0, angle, 0]}
         ref={(el) => (arrowsRef.current[i] = el)}
       >
-        {/* 화살표 모양 */}
         <mesh position={[0, 0, 0]}>
           <coneGeometry args={[0.1, 0.25, 8]} />
           <meshStandardMaterial
@@ -77,7 +69,6 @@ function PathGuide({ path }) {
           />
         </mesh>
 
-        {/* 화살표 꼬리 */}
         <mesh position={[0, 0, -0.15]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.025, 0.025, 0.2, 8]} />
           <meshStandardMaterial
@@ -94,7 +85,6 @@ function PathGuide({ path }) {
 
   return (
     <group>
-      {/* 경로 라인 */}
       {lineGeometry && (
         <line ref={lineRef} geometry={lineGeometry}>
           <lineBasicMaterial
@@ -106,10 +96,8 @@ function PathGuide({ path }) {
         </line>
       )}
 
-      {/* 화살표들 */}
       {arrows}
 
-      {/* 시작점 마커 */}
       <mesh
         position={[path.areas[0].position[0], 0.15, path.areas[0].position[2]]}
       >
@@ -121,7 +109,6 @@ function PathGuide({ path }) {
         />
       </mesh>
 
-      {/* 목적지 마커 */}
       <mesh
         position={[
           path.areas[path.areas.length - 1].position[0],

@@ -52,7 +52,6 @@
   border: 2px solid rgba(255, 255, 255, 0.8);
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4),
     0 0 20px rgba(33, 150, 243, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transform: translate(-50%, -50%);
   cursor: grab;
   transition: all 0.2s ease;
 }
@@ -69,7 +68,6 @@
 
 .joystick-knob:active {
   cursor: grabbing;
-  transform: translate(-50%, -50%) scale(0.9);
 }
 
 /* 조이스틱 방향 표시 */

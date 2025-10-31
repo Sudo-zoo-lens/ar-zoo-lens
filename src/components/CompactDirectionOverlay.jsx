@@ -60,22 +60,17 @@ function CompactDirectionOverlay({
 
   return (
     <div className="compact-direction-overlay">
-      {/* 닫기 버튼 */}
-      <button 
-        className="close-direction-btn" 
+      <button
+        className="close-direction-btn"
         onClick={() => {
-          console.log('닫기 버튼 클릭됨');
           if (onClose) {
             onClose();
-          } else {
-            console.log('onClose 함수가 없습니다');
           }
         }}
       >
         ✕
       </button>
 
-      {/* 컴팩트 뷰 - 항상 보임 */}
       <div className="compact-view" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="compact-arrow" style={{ color: config.color }}>
           {config.icon}
@@ -89,7 +84,6 @@ function CompactDirectionOverlay({
         <div className="expand-indicator">{isExpanded ? "▼" : "▲"}</div>
       </div>
 
-      {/* 확장 뷰 - 탭하면 보임 */}
       {isExpanded && (
         <div className="expanded-view">
           <div className="expanded-direction">

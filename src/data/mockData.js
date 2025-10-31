@@ -1,42 +1,35 @@
 import { findWaypoints } from "./waypoints";
 
-// 카테고리별 색상 정의
 export const categoryColors = {
-  GATE: "#2196F3", // 파랑
-  ANIMAL: "#FF9800", // 주황
-  FUN: "#E91E63", // 분홍
-  FACILITY: "#00BCD4", // 청록
-  NATURE: "#4CAF50", // 초록
+  GATE: "#2196F3",
+  ANIMAL: "#FF9800",
+  FUN: "#E91E63",
+  FACILITY: "#00BCD4",
+  NATURE: "#4CAF50",
 };
 
-// 현재 위치 (정문에서 시작)
 export const currentLocation = {
   latitude: 37.549544,
   longitude: 127.076119,
 };
 
-// GPS 좌표를 3D 좌표로 변환하는 함수
-// 기준점(정문)을 원점(0,0,0)으로 하여 상대 좌표 계산
-const METERS_PER_DEGREE_LAT = 111320; // 위도 1도당 약 111km
-const METERS_PER_DEGREE_LNG = 88740; // 서울 기준 경도 1도당 약 88km
+const METERS_PER_DEGREE_LAT = 111320;
+const METERS_PER_DEGREE_LNG = 88740;
 
 export const gpsToPosition = (latitude, longitude) => {
   const refLat = currentLocation.latitude;
   const refLng = currentLocation.longitude;
 
-  // 위도/경도 차이를 미터로 변환
   const dx = (longitude - refLng) * METERS_PER_DEGREE_LNG;
-  const dz = -(latitude - refLat) * METERS_PER_DEGREE_LAT; // Z축은 북쪽이 음수
+  const dz = -(latitude - refLat) * METERS_PER_DEGREE_LAT;
 
-  // 스케일 조정 (10m를 3D 공간의 1 단위로 - 더 확대됨)
   const scale = 0.1;
 
   return [dx * scale, 0, dz * scale];
 };
 
-// 두 GPS 좌표 사이의 거리 계산 (미터)
 export const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371e3; // 지구 반지름 (미터)
+  const R = 6371e3;
   const φ1 = (lat1 * Math.PI) / 180;
   const φ2 = (lat2 * Math.PI) / 180;
   const Δφ = ((lat2 - lat1) * Math.PI) / 180;
@@ -47,10 +40,9 @@ export const calculateDistance = (lat1, lon1, lat2, lon2) => {
     Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c; // 미터 단위
+  return R * c;
 };
 
-// 두 GPS 좌표 사이의 방위각 계산 (도)
 export const calculateBearing = (lat1, lon1, lat2, lon2) => {
   const φ1 = (lat1 * Math.PI) / 180;
   const φ2 = (lat2 * Math.PI) / 180;
@@ -61,15 +53,14 @@ export const calculateBearing = (lat1, lon1, lat2, lon2) => {
     Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
   const θ = Math.atan2(y, x);
 
-  return ((θ * 180) / Math.PI + 360) % 360; // 0-360도
+  return ((θ * 180) / Math.PI + 360) % 360;
 };
 
-// 이벤트 데이터
 export const events = [
   {
     id: "alpaca-event",
     name: "알파카 체험 프로그램",
-    areaId: "herbivore", // 초식동물 구역
+    areaId: "herbivore",
     startTime: "14:00",
     endTime: "14:50",
     description: "알파카와 함께하는 특별 체험 프로그램",
@@ -85,7 +76,7 @@ export const events = [
   {
     id: "otter-feeding",
     name: "수달 먹이시간",
-    areaId: "sea-animals", // 바다동물 구역
+    areaId: "sea-animals",
     startTime: "15:00",
     endTime: "15:30",
     description: "수달들의 먹이시간 관찰",
@@ -99,7 +90,7 @@ export const events = [
   {
     id: "animal-mukbang-live",
     name: "동물먹방라이브",
-    areaId: "carnivore-village", // 맹수마을
+    areaId: "carnivore-village",
     startTime: "15:00",
     endTime: "15:30",
     description: "맹수들의 식사시간 라이브 관찰",
@@ -109,9 +100,7 @@ export const events = [
   },
 ];
 
-// 동물원 구역 목 데이터 (원본)
 const zooAreasData = [
-  // 문(파랑)
   {
     id: "main-gate",
     name: "정문",
@@ -121,7 +110,7 @@ const zooAreasData = [
     latitude: 37.549544,
     longitude: 127.076119,
     capacity: 100,
-    visitors: Math.floor(Math.random() * 130), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 130),
     description: "동물원 정문 입구",
   },
   {
@@ -133,7 +122,7 @@ const zooAreasData = [
     latitude: 37.55065,
     longitude: 127.085055,
     capacity: 80,
-    visitors: Math.floor(Math.random() * 104), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 104),
     description: "동물원 후문 출구",
   },
   {
@@ -145,11 +134,10 @@ const zooAreasData = [
     latitude: 37.546198,
     longitude: 127.084548,
     capacity: 60,
-    visitors: Math.floor(Math.random() * 78), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 78),
     description: "구의문 출입구",
   },
 
-  // 동물(주황)
   {
     id: "sea-animals",
     name: "바다동물",
@@ -159,7 +147,7 @@ const zooAreasData = [
     latitude: 37.5473265330352,
     longitude: 127.082822587213,
     capacity: 50,
-    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 65),
     description: "바다동물 전시관",
   },
   {
@@ -171,7 +159,7 @@ const zooAreasData = [
     latitude: 37.5479146124793,
     longitude: 127.082568623513,
     capacity: 50,
-    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 65),
     description: "초식동물 서식지",
   },
   {
@@ -183,7 +171,7 @@ const zooAreasData = [
     latitude: 37.5488399906927,
     longitude: 127.083135460948,
     capacity: 50,
-    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 65),
     description: "맹수들의 마을",
   },
   {
@@ -195,11 +183,10 @@ const zooAreasData = [
     latitude: 37.5493545390007,
     longitude: 127.0817327974,
     capacity: 50,
-    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 65),
     description: "열대동물 전시관",
   },
 
-  // 재미나라(분홍)
   {
     id: "children-garden",
     name: "어린이정원",
@@ -209,7 +196,7 @@ const zooAreasData = [
     latitude: 37.548149821116,
     longitude: 127.077855673325,
     capacity: 60,
-    visitors: Math.floor(Math.random() * 78), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 78),
     description: "어린이를 위한 정원",
   },
   {
@@ -221,7 +208,7 @@ const zooAreasData = [
     latitude: 37.547733817408,
     longitude: 127.08016373868,
     capacity: 70,
-    visitors: Math.floor(Math.random() * 91), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 91),
     description: "시원한 물놀이 시설",
   },
   {
@@ -233,7 +220,7 @@ const zooAreasData = [
     latitude: 37.5509838727564,
     longitude: 127.083834,
     capacity: 80,
-    visitors: Math.floor(Math.random() * 104), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 104),
     description: "신나는 놀이동산",
   },
   {
@@ -245,7 +232,7 @@ const zooAreasData = [
     latitude: 37.5495776633293,
     longitude: 127.078219284712,
     capacity: 50,
-    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 65),
     description: "아름다운 음악분수",
   },
   {
@@ -257,11 +244,10 @@ const zooAreasData = [
     latitude: 37.5507516679991,
     longitude: 127.077530197565,
     capacity: 60,
-    visitors: Math.floor(Math.random() * 78), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 78),
     description: "상상력을 키우는 공간",
   },
 
-  // 편의시설(청록)
   {
     id: "kkum-maru",
     name: "꿈마루",
@@ -271,7 +257,7 @@ const zooAreasData = [
     latitude: 37.5492570920947,
     longitude: 127.079294007445,
     capacity: 40,
-    visitors: Math.floor(Math.random() * 52), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 52),
     description: "편의시설",
   },
   {
@@ -283,7 +269,7 @@ const zooAreasData = [
     latitude: 37.5499261570828,
     longitude: 127.082474652194,
     capacity: 30,
-    visitors: Math.floor(Math.random() * 39), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 39),
     description: "휴게 공간",
   },
   {
@@ -295,11 +281,10 @@ const zooAreasData = [
     latitude: 37.5468659265176,
     longitude: 127.084372374435,
     capacity: 50,
-    visitors: Math.floor(Math.random() * 65), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 65),
     description: "카페테리아 및 휴게소",
   },
 
-  // 자연나라(초록)
   {
     id: "botanical-garden",
     name: "식물원",
@@ -309,7 +294,7 @@ const zooAreasData = [
     latitude: 37.548643,
     longitude: 127.081047,
     capacity: 40,
-    visitors: Math.floor(Math.random() * 52), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 52),
     description: "다양한 식물 전시",
   },
   {
@@ -321,7 +306,7 @@ const zooAreasData = [
     latitude: 37.548133,
     longitude: 127.078305,
     capacity: 30,
-    visitors: Math.floor(Math.random() * 39), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 39),
     description: "생태 연못",
   },
   {
@@ -333,19 +318,17 @@ const zooAreasData = [
     latitude: 37.550513,
     longitude: 127.079498,
     capacity: 35,
-    visitors: Math.floor(Math.random() * 46), // capacity의 130%까지 가능
+    visitors: Math.floor(Math.random() * 46),
     description: "사계절 정원",
   },
 ];
 
-// GPS 좌표를 position으로 변환하여 export
 export const zooAreas = zooAreasData.map((area) => ({
   ...area,
   position: gpsToPosition(area.latitude, area.longitude),
   congestionLevel: area.visitors / area.capacity,
 }));
 
-// 혼잡도 레벨 정의
 export const congestionLevels = {
   LOW: { min: 0, max: 0.3, color: "#4CAF50", label: "여유" },
   MEDIUM: { min: 0.3, max: 0.6, color: "#FFC107", label: "보통" },
@@ -353,7 +336,6 @@ export const congestionLevels = {
   VERY_HIGH: { min: 0.8, max: 1.0, color: "#F44336", label: "매우 혼잡" },
 };
 
-// 혼잡도에 따른 색상 반환
 export const getCongestionColor = (level) => {
   if (level <= 0.3) return congestionLevels.LOW.color;
   if (level <= 0.6) return congestionLevels.MEDIUM.color;
@@ -361,7 +343,6 @@ export const getCongestionColor = (level) => {
   return congestionLevels.VERY_HIGH.color;
 };
 
-// 혼잡도에 따른 라벨 반환
 export const getCongestionLabel = (level) => {
   if (level <= 0.3) return congestionLevels.LOW.label;
   if (level <= 0.6) return congestionLevels.MEDIUM.label;
@@ -369,14 +350,12 @@ export const getCongestionLabel = (level) => {
   return congestionLevels.VERY_HIGH.label;
 };
 
-// 두 지점 사이의 거리 계산
 const getDistance = (pos1, pos2) => {
   const dx = pos1[0] - pos2[0];
   const dz = pos1[2] - pos2[2];
   return Math.sqrt(dx * dx + dz * dz);
 };
 
-// 간단한 경로 찾기 알고리즘 (혼잡도 고려)
 export const findOptimalPath = (
   startAreaId,
   endAreaId,
@@ -387,22 +366,18 @@ export const findOptimalPath = (
 
   if (!startArea || !endArea) return null;
 
-  // 웨이포인트 사용 여부에 따라 다르게 처리
   let pathPoints = [];
 
   if (useWaypoints) {
-    // 웨이포인트가 있으면 사용
     const waypointsBetween = findWaypoints(startAreaId, endAreaId);
 
     if (waypointsBetween && waypointsBetween.length > 0) {
-      // 웨이포인트를 3D 좌표로 변환
       pathPoints = waypointsBetween.map((wp) => ({
         latitude: wp.latitude,
         longitude: wp.longitude,
         position: gpsToPosition(wp.latitude, wp.longitude),
       }));
     } else {
-      // 웨이포인트가 없으면 시설들만 사용 (기존 로직)
       pathPoints = [startArea];
 
       const intermediateAreas = zooAreas
@@ -422,7 +397,6 @@ export const findOptimalPath = (
       pathPoints.push(endArea);
     }
   } else {
-    // 기존 로직: 시설들만 사용
     pathPoints = [startArea];
 
     const intermediateAreas = zooAreas
@@ -442,7 +416,6 @@ export const findOptimalPath = (
     pathPoints.push(endArea);
   }
 
-  // 실제 GPS 거리 계산 (미터 단위)
   const totalDist = pathPoints.reduce((total, point, index) => {
     if (index === 0) return 0;
     const prevPoint = pathPoints[index - 1];
@@ -457,7 +430,6 @@ export const findOptimalPath = (
     );
   }, 0);
 
-  // 걸음 속도 기준: 평균 보행 속도 4km/h = 67m/min
   const walkingSpeedMetersPerMin = 67;
 
   const estimatedTime = Math.ceil(
@@ -470,7 +442,6 @@ export const findOptimalPath = (
         point.latitude,
         point.longitude
       );
-      // 혼잡도에 따라 이동 시간 증가 (웨이포인트에는 혼잡도 정보가 없으므로 0 처리)
       const congestionLevel = point.congestionLevel || 0;
       const congestionMultiplier = 1 + congestionLevel * 0.3;
       return total + (dist / walkingSpeedMetersPerMin) * congestionMultiplier;
@@ -479,16 +450,15 @@ export const findOptimalPath = (
 
   return {
     areas: pathPoints,
-    totalDistance: Math.round(totalDist), // 미터 단위
+    totalDistance: Math.round(totalDist),
     avgCongestion: pathPoints.some((p) => p.congestionLevel !== undefined)
       ? pathPoints.reduce((sum, p) => sum + (p.congestionLevel || 0), 0) /
         pathPoints.filter((p) => p.congestionLevel !== undefined).length
       : 0,
-    estimatedTime: estimatedTime, // 분 단위
+    estimatedTime: estimatedTime,
   };
 };
 
-// 다중 목적지 우선순위 기반 경로 추천
 export const recommendRoute = (
   selectedDestinations,
   userPosition = currentLocation,
@@ -498,9 +468,8 @@ export const recommendRoute = (
     return null;
   }
 
-  // 1. 이벤트 시간 우선순위 적용
   const now = new Date();
-  const currentTime = now.getHours() * 60 + now.getMinutes(); // 분 단위로 변환
+  const currentTime = now.getHours() * 60 + now.getMinutes();
 
   const destinationsWithEvents = selectedDestinations.map((destId) => {
     const area = zooAreas.find((a) => a.id === destId);
@@ -536,7 +505,6 @@ export const recommendRoute = (
     };
   });
 
-  // 2. 거리 필터링 완화 (모든 선택된 목적지 포함)
   const nearbyDestinations = destinationsWithEvents.map((dest) => {
     const distance = calculateDistance(
       userPosition.latitude,
@@ -551,26 +519,16 @@ export const recommendRoute = (
     };
   });
 
-  // 3. 혼잡도 계산 (모든 목적지 포함하되 점수에만 반영)
   const validDestinations = nearbyDestinations.map((dest) => {
     const directDistance = dest.distance;
 
-    // 이벤트가 임박한 경우 혼잡도 조건 완화
     const isEventUrgent =
       dest.hasEvent &&
       dest.timeUntilEvent !== null &&
       dest.timeUntilEvent <= 60;
 
-    // 혼잡도가 높은 경우 우회 경로 고려 (점수 계산에만 사용)
     const congestionMultiplier = 1 + dest.congestionLevel * 0.3;
     const congestedDistance = directDistance * congestionMultiplier;
-
-    // 디버깅을 위한 로그
-    console.log(
-      `${dest.name}: 직접거리 ${Math.round(
-        directDistance
-      )}m, 혼잡거리 ${Math.round(congestedDistance)}m`
-    );
 
     return {
       ...dest,
@@ -579,36 +537,26 @@ export const recommendRoute = (
     };
   });
 
-  console.log(`혼잡도 계산 후: ${validDestinations.length}개 시설`);
-
-  // 4. 종합 점수 계산 및 정렬
   const scoredDestinations = validDestinations.map((dest) => {
-    // 이미 계산된 거리 사용
     const distance = dest.distance;
 
-    // 점수 계산 (낮을수록 우선순위 높음)
     let score = 0;
 
-    // 참석하는 이벤트가 있으면 최고 우선순위 부여
     if (dest.isAttending) {
-      score = -50000; // 최고 우선순위 (음수로 가장 낮은 점수)
+      score = -50000;
     } else {
-      // 이벤트 우선순위 (가장 중요) - 가중치 높임
       score += dest.priorityScore * 10000;
 
-      // 혼잡도 점수 (낮을수록 좋음) - 가중치 조정
       score += dest.congestionLevel * 500;
 
-      // 거리 점수 (가까울수록 좋음) - 정규화
-      score += distance / 5; // 미터를 점수로 변환 (더 민감하게)
+      score += distance / 5;
 
-      // 이벤트 참가 가능 여부 보너스
       if (
         dest.hasEvent &&
         dest.timeUntilEvent !== null &&
         dest.timeUntilEvent > 0
       ) {
-        score -= 2000; // 이벤트 참가 가능한 경우 보너스
+        score -= 2000;
       }
     }
 
@@ -620,7 +568,6 @@ export const recommendRoute = (
     };
   });
 
-  // 5. 최종 정렬 (점수 낮은 순)
   const finalRecommendations = scoredDestinations.sort((a, b) => {
     return a.calculatedScore - b.calculatedScore;
   });
@@ -628,35 +575,26 @@ export const recommendRoute = (
   return finalRecommendations;
 };
 
-// 이벤트 우선순위 계산 함수
 const calculateEventPriority = (timeUntilEvent, event, isAttending = false) => {
   if (!event || timeUntilEvent === null) return 0;
 
-  // 참석하는 이벤트는 별도 처리 (최고 우선순위)
   if (isAttending) {
-    return 0; // 참석하는 이벤트는 점수 계산에서 별도 처리
+    return 0;
   }
 
-  // 이벤트 시작까지 남은 시간에 따른 우선순위
   if (timeUntilEvent <= 0) {
-    // 이미 시작된 이벤트는 낮은 우선순위
     return 10;
   } else if (timeUntilEvent <= 30) {
-    // 30분 이내 시작 예정 - 최고 우선순위
     return 1;
   } else if (timeUntilEvent <= 60) {
-    // 1시간 이내 시작 예정 - 높은 우선순위
     return 2;
   } else if (timeUntilEvent <= 120) {
-    // 2시간 이내 시작 예정 - 중간 우선순위
     return 3;
   } else {
-    // 2시간 이후 시작 예정 - 낮은 우선순위
     return 5;
   }
 };
 
-// 이벤트 참석 여부 확인 및 시간 체크
 export const checkEventAttendance = (
   areaId,
   userPosition = currentLocation
@@ -670,9 +608,8 @@ export const checkEventAttendance = (
   const eventStartTime = startHour * 60 + startMin;
 
   const timeUntilEvent = eventStartTime - currentTime;
-  const canAttend = timeUntilEvent > 0; // 이벤트 시작 전
+  const canAttend = timeUntilEvent > 0;
 
-  // 도착 가능 시간 계산 (보행 속도 67m/min)
   const distance = calculateDistance(
     userPosition.latitude,
     userPosition.longitude,
@@ -680,7 +617,7 @@ export const checkEventAttendance = (
     zooAreas.find((a) => a.id === areaId).longitude
   );
 
-  const walkingTime = Math.ceil(distance / 67); // 분 단위
+  const walkingTime = Math.ceil(distance / 67);
   const arrivalTime = currentTime + walkingTime;
   const canArriveOnTime = arrivalTime <= eventStartTime;
 
@@ -697,9 +634,7 @@ export const checkEventAttendance = (
   };
 };
 
-// 실시간 혼잡도 업데이트 시뮬레이션
 export const updateCongestionLevels = () => {
-  // 원본 배열을 직접 수정
   zooAreas.forEach((area) => {
     area.visitors = Math.max(
       0,

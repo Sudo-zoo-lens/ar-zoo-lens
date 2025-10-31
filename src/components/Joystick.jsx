@@ -121,7 +121,7 @@ function Joystick({ onMove }) {
           ref={knobRef}
           className="joystick-knob"
           style={{
-            transform: `translate(${position.x}px, ${position.y}px)`,
+            transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
             transition: isDragging ? "none" : "transform 0.2s ease-out",
           }}
         />

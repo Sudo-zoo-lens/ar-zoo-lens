@@ -11,6 +11,7 @@ function AROverlay({
   userPosition: externalUserPosition,
   onAreaSelect,
   congestionUpdate,
+  categoryFilter,
 }) {
   const [userPosition, setUserPosition] = useState(
     externalUserPosition || currentLocation
@@ -42,51 +43,16 @@ function AROverlay({
     }
   }, [externalUserPosition]);
 
-  // GPS 위치 추적 (현재는 비활성화 - 정문 위치 사용)
-  useEffect(() => {
-    // TODO: 실제 GPS를 사용하려면 아래 주석을 해제하세요
-    /*
-    if ("geolocation" in navigator) {
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          setUserPosition({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.warn("GPS 위치를 가져올 수 없습니다:", error);
-          // 실패 시 정문 위치 사용
-          setUserPosition(currentLocation);
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 1000,
-          timeout: 5000,
-        }
-      );
-
-      return () => navigator.geolocation.clearWatch(watchId);
-    }
-    */
-
-    // 테스트용: 정문에서 시작
-    console.log("테스트 모드: 정문 위치 사용 중");
-  }, []);
-
-  // 테스트용: 키보드로 회전 (Q/E 키 + 한글 ㅂ/ㄷ)
   useEffect(() => {
     const handleKeyDown = (event) => {
       const key = event.key.toLowerCase();
       switch (key) {
         case "q":
         case "ㅂ":
-          // 왼쪽으로 회전
           setHeading((prev) => normalizeAngle(prev - 5));
           break;
         case "e":
         case "ㄷ":
-          // 오른쪽으로 회전
           setHeading((prev) => normalizeAngle(prev + 5));
           break;
         default:
@@ -142,9 +108,13 @@ function AROverlay({
       // heading을 정규화 (안전장치)
       const normalizedHeading = normalizeAngle(heading);
 
-      const pois = zooAreas
+      const filteredAreas =
+        categoryFilter && categoryFilter.length > 0
+          ? zooAreas.filter((area) => categoryFilter.includes(area.category))
+          : zooAreas;
+
+      const pois = filteredAreas
         .map((area) => {
-          // 거리 계산
           const distance = calculateDistance(
             userPosition.latitude,
             userPosition.longitude,
@@ -152,7 +122,6 @@ function AROverlay({
             area.longitude
           );
 
-          // 방위각 계산 (0-360)
           const bearing = normalizeAngle(
             calculateBearing(
               userPosition.latitude,
@@ -162,34 +131,31 @@ function AROverlay({
             )
           );
 
-          // 화면 상 각도 차이 계산 (-180 ~ +180)
           const angleDiff = getAngleDifference(bearing, normalizedHeading);
 
           return {
             ...area,
-            distance: Math.round(distance), // 정수로 반올림하여 떨림 방지
+            distance: Math.round(distance),
             bearing: Math.round(bearing),
-            angleDiff: Math.round(angleDiff * 10) / 10, // 소수점 한 자리로 제한
+            angleDiff: Math.round(angleDiff * 10) / 10,
           };
         })
         .filter((poi) => {
-          // 시야각 내에 있고 (±60도), 200m 이내인 것만
           return Math.abs(poi.angleDiff) < 60 && poi.distance < 200;
         })
-        .sort((a, b) => a.distance - b.distance); // 가까운 순서
+        .sort((a, b) => a.distance - b.distance);
 
       setVisiblePOIs(pois);
     };
 
     updateVisiblePOIs();
-    const interval = setInterval(updateVisiblePOIs, 300); // 0.3초마다 업데이트 (떨림 방지)
+    const interval = setInterval(updateVisiblePOIs, 300);
 
     return () => clearInterval(interval);
-  }, [userPosition, heading, forceUpdate]);
+  }, [userPosition, heading, forceUpdate, categoryFilter]);
 
   return (
     <div className="ar-overlay-container">
-      {/* AR 시설 상세 패널 */}
       {selectedPOI && (
         <div className="ar-facility-panel">
           <button
@@ -262,7 +228,6 @@ function AROverlay({
         </div>
       )}
 
-      {/* 개발 정보 (디버깅용) */}
       {!selectedPOI && (
         <div className="ar-debug-info">
           <div>
@@ -279,16 +244,12 @@ function AROverlay({
         </div>
       )}
 
-      {/* AR 마커들 */}
       {!selectedPOI &&
         visiblePOIs.map((poi) => {
-          // 화면 상의 X 위치 계산 (-60도 ~ +60도를 0% ~ 100%로 변환)
           const screenX = ((poi.angleDiff + 60) / 120) * 100;
 
-          // 거리에 따른 크기 조정 (가까울수록 크게, 더 크게 표시)
           const scale = Math.max(0.8, Math.min(2.5, 150 / poi.distance));
 
-          // 거리에 따른 Y 위치 (가까운 것은 중앙, 먼 것은 약간 위쪽)
           const screenY = Math.max(
             30,
             Math.min(50, 50 - (200 - poi.distance) / 10)
@@ -326,7 +287,6 @@ function AROverlay({
           );
         })}
 
-      {/* 중앙 십자선 */}
       {!selectedPOI && (
         <div className="ar-crosshair">
           <div className="crosshair-horizontal"></div>

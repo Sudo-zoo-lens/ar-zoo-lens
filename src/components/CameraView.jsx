@@ -9,6 +9,7 @@ function CameraView({
   userPosition,
   onAreaSelect,
   congestionUpdate,
+  categoryFilter,
 }) {
   const videoRef = useRef(null);
   const [hasCamera, setHasCamera] = useState(false);
@@ -17,7 +18,6 @@ function CameraView({
 
   useEffect(() => {
     if (!isActive) {
-      // 카메라 스트림 정리
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -25,12 +25,11 @@ function CameraView({
       return;
     }
 
-    // 카메라 시작
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: "environment", // 후면 카메라 (환경 카메라)
+            facingMode: "environment",
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },
@@ -53,7 +52,6 @@ function CameraView({
     startCamera();
 
     return () => {
-      // 클린업
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -65,7 +63,6 @@ function CameraView({
 
   return (
     <div className="camera-view">
-      {/* 카메라 비디오 스트림 */}
       <video
         ref={videoRef}
         autoPlay
@@ -74,7 +71,6 @@ function CameraView({
         className="camera-video"
       />
 
-      {/* 에러 메시지 */}
       {error && (
         <div className="camera-error">
           <div className="error-icon">📷</div>
@@ -89,19 +85,17 @@ function CameraView({
         </div>
       )}
 
-      {/* AR 오버레이 */}
       {hasCamera && showAR && (
         <AROverlay
           userPosition={userPosition}
           onAreaSelect={onAreaSelect}
           congestionUpdate={congestionUpdate}
+          categoryFilter={categoryFilter}
         />
       )}
 
-      {/* 추가 컨트롤 및 오버레이 (항상 표시) */}
       {hasCamera && !showAR && <div className="ar-overlay">{children}</div>}
 
-      {/* 지도 보기 버튼 (항상 표시) */}
       {hasCamera && children && (
         <div className="camera-controls">{children}</div>
       )}

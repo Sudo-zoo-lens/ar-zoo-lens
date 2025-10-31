@@ -14,16 +14,14 @@ function ARScene({
   userPosition: userGPSPosition,
 }) {
   const [areas, setAreas] = useState(zooAreas);
-  const isPresenting = false; // AR 기능은 나중에 추가
+  const isPresenting = false;
   const { invalidate } = useThree();
 
-  // GPS 좌표를 3D 좌표로 변환 (메모이제이션)
   const userPosition = useMemo(() => {
     if (!userGPSPosition) return [0, 0, 0];
     return gpsToPosition(userGPSPosition.latitude, userGPSPosition.longitude);
   }, [userGPSPosition?.latitude, userGPSPosition?.longitude]);
 
-  // 실시간 혼잡도 업데이트 시뮬레이션 (10초마다)
   useEffect(() => {
     const interval = setInterval(() => {
       setAreas((prevAreas) =>
@@ -42,36 +40,31 @@ function ARScene({
           };
         })
       );
-      invalidate(); // 변경 시 재렌더링 트리거
+      invalidate();
     }, 10000);
 
     return () => clearInterval(interval);
   }, [invalidate]);
 
-  // 위치가 변경되면 재렌더링 트리거
   useEffect(() => {
     invalidate();
   }, [userPosition, invalidate]);
 
   return (
     <>
-      {/* 1인칭 카메라 모드 */}
       <FirstPersonCamera
         userPosition={userPosition}
         isActive={firstPersonMode}
       />
 
-      {/* 조명 설정 */}
       <ambientLight intensity={0.7} />
       <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
       <pointLight position={[-10, -10, -5]} intensity={0.5} />
       <hemisphereLight intensity={0.5} groundColor="#444444" />
 
-      {/* 환경 설정 (AR이 아닐 때) */}
       {!isPresenting && (
         <>
           <Environment preset="park" />
-          {/* OrbitControls는 1인칭 모드가 아닐 때만 활성화 */}
           {!firstPersonMode && (
             <OrbitControls
               enablePan={true}
@@ -87,7 +80,6 @@ function ARScene({
         </>
       )}
 
-      {/* 바닥 */}
       {!isPresenting && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
@@ -99,7 +91,6 @@ function ARScene({
         </mesh>
       )}
 
-      {/* 그리드 (참고용) */}
       {!isPresenting && (
         <gridHelper
           args={[200, 100, "#888888", "#cccccc"]}
@@ -107,7 +98,6 @@ function ARScene({
         />
       )}
 
-      {/* 타이틀 */}
       <Text
         position={[15, 8, 0]}
         fontSize={1}
@@ -121,7 +111,6 @@ function ARScene({
         🗺️ AR Zoo Lens
       </Text>
 
-      {/* 동물원 구역들 */}
       {areas.map((area) => (
         <ZooArea
           key={area.id}
@@ -131,10 +120,8 @@ function ARScene({
         />
       ))}
 
-      {/* 경로 안내 */}
       {currentPath && <PathGuide path={currentPath} />}
 
-      {/* 현재 위치 표시 */}
       <group position={userPosition}>
         <mesh position={[0, 3, 0]}>
           <sphereGeometry args={[0.3, 16, 16]} />

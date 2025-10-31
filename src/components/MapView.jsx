@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./MapView.css";
@@ -18,6 +18,7 @@ function MapView({
   userPosition,
   onDestinationToggle,
   congestionUpdate,
+  categoryFilter,
 }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
@@ -25,42 +26,37 @@ function MapView({
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [, forceUpdate] = useState(0);
   const moveInterval = useRef(null);
+  const categoryFilterRef = useRef(categoryFilter);
 
-  // 혼잡도 업데이트 시 강제 리렌더링
+  useEffect(() => {
+    categoryFilterRef.current = categoryFilter;
+  }, [categoryFilter]);
+
   useEffect(() => {
     if (congestionUpdate !== undefined) {
       forceUpdate((prev) => prev + 1);
     }
   }, [congestionUpdate]);
 
-  // 조이스틱 이동 핸들러
   const handleJoystickMove = (direction) => {
     if (!map.current) return;
 
-    // 기존 이동 인터벌 정리
     if (moveInterval.current) {
       clearInterval(moveInterval.current);
       moveInterval.current = null;
     }
 
-    // 조이스틱이 중앙에 있으면 이동 중지
     if (direction.x === 0 && direction.y === 0) {
       return;
     }
 
-    // 이동 속도 설정 (조이스틱 값에 비례)
-    const moveSpeed = 0.00001; // 지도 좌표 단위로 이동
+    const moveSpeed = 0.00001;
 
-    // 현재 지도 중심점과 회전각 가져오기
     const currentCenter = map.current.getCenter();
-    const currentBearing = map.current.getBearing(); // 현재 바라보는 방향 (도 단위)
+    const currentBearing = map.current.getBearing();
 
-    // 회전각을 라디안으로 변환
     const bearingRad = (currentBearing * Math.PI) / 180;
 
-    // 조이스틱 방향을 현재 바라보는 방향 기준으로 변환
-    // X축: 좌우 이동 (bearing에 따라 회전)
-    // Y축: 앞뒤 이동 (bearing에 따라 회전)
     const moveX =
       (direction.x * Math.cos(bearingRad) -
         direction.y * Math.sin(bearingRad)) *
@@ -70,19 +66,13 @@ function MapView({
         direction.y * Math.cos(bearingRad)) *
       moveSpeed;
 
-    // 새로운 중심점 계산
-    const newCenter = [
-      currentCenter.lng + moveX,
-      currentCenter.lat - moveY, // Y축은 반대 방향
-    ];
+    const newCenter = [currentCenter.lng + moveX, currentCenter.lat - moveY];
 
-    // 지도 중심점 부드럽게 이동
     map.current.easeTo({
       center: newCenter,
-      duration: 100, // 빠른 반응을 위한 짧은 지속시간
+      duration: 100,
     });
 
-    // 연속 이동을 위한 인터벌 설정
     moveInterval.current = setInterval(() => {
       const currentCenter = map.current.getCenter();
       const currentBearing = map.current.getBearing();
@@ -103,10 +93,9 @@ function MapView({
         center: newCenter,
         duration: 100,
       });
-    }, 50); // 50ms마다 이동
+    }, 50);
   };
 
-  // 지도 초기화
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
@@ -114,25 +103,22 @@ function MapView({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
       center: [userPosition.longitude, userPosition.latitude],
-      zoom: 18,
-      pitch: 60, // 포켓몬고 스타일 1인칭 시점
-      bearing: 0, // 방향
+      zoom: 19.5,
+      pitch: 80,
+      bearing: 120,
       antialias: true,
-      projection: "globe", // 지구 곡률 표현
+      projection: "globe",
     });
 
-    // 드래그로 지도 이동은 막고 회전만 허용 (기본 회전 제스처 유지)
     if (map.current.dragPan) {
       map.current.dragPan.disable();
     }
 
-    // 지도 로드 완료 후 마커 추가
     map.current.on("load", () => {
       addMarkers();
       addRoute();
     });
 
-    // 커스텀 회전 제스처: 좌클릭/터치 드래그로 회전, 세로 드래그로 피치
     const canvas = map.current.getCanvas();
     let isPointerDown = false;
     let startX = 0;
@@ -156,8 +142,8 @@ function MapView({
       const dx = x - startX;
       const dy = y - startY;
 
-      const newBearing = startBearing - dx * 0.3; // 좌우 드래그로 회전
-      const newPitch = clamp(startPitch + dy * 0.2, 0, 80); // 상하 드래그로 피치
+      const newBearing = startBearing - dx * 0.3;
+      const newPitch = clamp(startPitch + dy * 0.2, 0, 80);
 
       map.current.easeTo({
         bearing: newBearing,
@@ -169,10 +155,9 @@ function MapView({
     const onPointerUp = () => {
       isPointerDown = false;
       canvas.style.cursor = "grab";
-      updateMarkers();
+      addMarkers();
     };
 
-    // 마우스 이벤트
     const handleMouseDown = (e) => onPointerDown(e.clientX, e.clientY);
     const handleMouseMove = (e) => onPointerMove(e.clientX, e.clientY);
     const handleMouseUp = () => onPointerUp();
@@ -181,7 +166,6 @@ function MapView({
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
 
-    // 터치 이벤트 (한 손가락)
     const handleTouchStart = (e) => {
       if (e.touches.length !== 1) return;
       const t = e.touches[0];
@@ -198,13 +182,11 @@ function MapView({
     window.addEventListener("touchmove", handleTouchMove, { passive: true });
     window.addEventListener("touchend", handleTouchEnd);
 
-    // 회전 시 마커 위치 업데이트
     map.current.on("rotate", () => {
-      updateMarkers();
+      addMarkers();
     });
 
     return () => {
-      // 커스텀 리스너 정리
       canvas.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
@@ -212,13 +194,11 @@ function MapView({
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
 
-      // 이동 인터벌 정리
       if (moveInterval.current) {
         clearInterval(moveInterval.current);
         moveInterval.current = null;
       }
 
-      // 마커들 정리
       markers.current.forEach((marker) => marker.remove());
       markers.current = [];
 
@@ -229,23 +209,20 @@ function MapView({
     };
   }, []);
 
-  // 사용자 위치 변경 시 지도 중심 이동
-  useEffect(() => {
-    if (map.current) {
-      map.current.setCenter([userPosition.longitude, userPosition.latitude]);
-      updateMarkers();
-    }
-  }, [userPosition]);
+  const addMarkers = useCallback(() => {
+    const currentFilter = categoryFilterRef.current;
 
-  // 마커 추가 함수
-  const addMarkers = () => {
-    // 기존 마커들 제거
     markers.current.forEach((marker) => marker.remove());
     markers.current = [];
 
     if (!map.current) return;
 
-    zooAreas.forEach((area) => {
+    const filteredAreas =
+      currentFilter && currentFilter.length > 0
+        ? zooAreas.filter((area) => currentFilter.includes(area.category))
+        : zooAreas;
+
+    filteredAreas.forEach((area) => {
       const distance = Math.round(
         calculateDistance(
           userPosition.latitude,
@@ -259,7 +236,6 @@ function MapView({
       const isSelected = selectedDestinations.includes(area.id);
       const selectedClass = isSelected ? "selected" : "";
 
-      // 커스텀 마커 엘리먼트 생성
       const el = document.createElement("div");
       el.className = `custom-marker ${selectedClass}`;
       el.innerHTML = `
@@ -275,30 +251,25 @@ function MapView({
         </div>
       `;
 
-      // 클릭 이벤트 추가
       el.addEventListener("click", () => {
         setSelectedMarker(area);
         onDestinationToggle && onDestinationToggle(area.id);
       });
 
-      // Mapbox 마커 생성 및 저장
       const marker = new mapboxgl.Marker(el)
         .setLngLat([area.longitude, area.latitude])
         .addTo(map.current);
 
       markers.current.push(marker);
     });
+  }, [userPosition, selectedDestinations, onDestinationToggle]);
 
-    // 사용자 위치 마커는 Mapbox 마커가 아닌 고정 오버레이로 표시
-    // (이렇게 하면 화면 위치에 고정됨)
-  };
+  useEffect(() => {
+    if (map.current) {
+      addMarkers();
+    }
+  }, [categoryFilter, addMarkers]);
 
-  // 마커 업데이트 함수
-  const updateMarkers = () => {
-    addMarkers();
-  };
-
-  // 경로 추가 함수
   const addRoute = () => {
     if (!currentPath || !map.current) return;
 
@@ -307,13 +278,11 @@ function MapView({
       area.latitude,
     ]);
 
-    // 기존 경로 제거
     if (map.current.getLayer("route")) {
       map.current.removeLayer("route");
       map.current.removeSource("route");
     }
 
-    // 경로 라인 추가
     map.current.addSource("route", {
       type: "geojson",
       data: {
@@ -326,7 +295,6 @@ function MapView({
       },
     });
 
-    // 경로 스타일 추가
     map.current.addLayer({
       id: "route",
       type: "line",
@@ -343,16 +311,27 @@ function MapView({
     });
   };
 
-  // 경로 변경 시 업데이트
   useEffect(() => {
     if (map.current && currentPath) {
       addRoute();
     }
   }, [currentPath]);
 
+  useEffect(() => {
+    if (map.current) {
+      map.current.setCenter([userPosition.longitude, userPosition.latitude]);
+      addMarkers();
+    }
+  }, [userPosition, addMarkers]);
+
+  useEffect(() => {
+    if (map.current) {
+      addMarkers();
+    }
+  }, [addMarkers, congestionUpdate]);
+
   return (
     <div className="map-view-container">
-      {/* 사용자 위치 마커 (고정 오버레이) */}
       <div className="user-marker-overlay">
         <div className="user-marker-container">
           <div className="user-marker-dot"></div>
@@ -360,7 +339,6 @@ function MapView({
         </div>
       </div>
 
-      {/* AR 정보 오버레이 - 경로 안내 중 */}
       {currentPath && !selectedMarker && (
         <div className="ar-map-overlay">
           <div className="ar-info-panel">
@@ -405,7 +383,6 @@ function MapView({
         </div>
       )}
 
-      {/* AR 정보 오버레이 - 시설 선택 시 */}
       {selectedMarker && (
         <div className="ar-map-overlay">
           <div className="ar-info-panel ar-info-panel-expanded">
@@ -490,10 +467,8 @@ function MapView({
         </div>
       )}
 
-      {/* Mapbox 지도 컨테이너 */}
       <div ref={mapContainer} className="mapbox-map" />
 
-      {/* 조이스틱 컨트롤 */}
       <Joystick onMove={handleJoystickMove} />
     </div>
   );

@@ -7,7 +7,6 @@ function ZooArea({ area, onClick, isSelected }) {
   const groupRef = useRef();
   const [hovered, setHovered] = useState(false);
 
-  // 부드러운 펄스 애니메이션
   useFrame((state) => {
     if (groupRef.current && isSelected) {
       const scale = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.1;
@@ -19,7 +18,7 @@ function ZooArea({ area, onClick, isSelected }) {
 
   const congestionColor = getCongestionColor(area.congestionLevel);
   const congestionLabel = getCongestionLabel(area.congestionLevel);
-  const categoryColor = area.color || congestionColor; // 카테고리 색상 우선 사용
+  const categoryColor = area.color || congestionColor;
 
   return (
     <group
@@ -29,7 +28,6 @@ function ZooArea({ area, onClick, isSelected }) {
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
-      {/* 바닥 원형 마커 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
         <circleGeometry args={[1.5, 32]} />
         <meshStandardMaterial
@@ -41,7 +39,6 @@ function ZooArea({ area, onClick, isSelected }) {
         />
       </mesh>
 
-      {/* 혼잡도 표시 기둥 */}
       <mesh position={[0, area.congestionLevel * 1.5, 0]}>
         <cylinderGeometry args={[0.15, 0.25, area.congestionLevel * 3, 16]} />
         <meshStandardMaterial
@@ -53,7 +50,6 @@ function ZooArea({ area, onClick, isSelected }) {
         />
       </mesh>
 
-      {/* 상단 아이콘/이모지 */}
       <Text
         position={[0, area.congestionLevel * 1.5 + 0.8, 0]}
         fontSize={0.8}
@@ -63,7 +59,6 @@ function ZooArea({ area, onClick, isSelected }) {
         {area.emoji}
       </Text>
 
-      {/* 구역 이름 */}
       <Text
         position={[0, 0.1, 0]}
         fontSize={0.3}
@@ -76,7 +71,6 @@ function ZooArea({ area, onClick, isSelected }) {
         {area.name}
       </Text>
 
-      {/* 혼잡도 정보 */}
       <Text
         position={[0, -0.3, 0]}
         fontSize={0.2}
@@ -89,7 +83,6 @@ function ZooArea({ area, onClick, isSelected }) {
         {congestionLabel} ({area.visitors}/{area.capacity})
       </Text>
 
-      {/* 호버 시 상세 정보 */}
       {(hovered || isSelected) && (
         <Html
           position={[0, area.congestionLevel * 1.5 + 1.8, 0]}
@@ -122,7 +115,6 @@ function ZooArea({ area, onClick, isSelected }) {
         </Html>
       )}
 
-      {/* 선택 표시 링 */}
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <ringGeometry args={[1.6, 1.9, 32]} />
