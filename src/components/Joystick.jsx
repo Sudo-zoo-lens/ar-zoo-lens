@@ -70,7 +70,9 @@ function Joystick({ onMove }) {
 
   // 터치 이벤트
   const handleTouchStart = (e) => {
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       handleStart(touch.clientX, touch.clientY);
@@ -78,7 +80,9 @@ function Joystick({ onMove }) {
   };
 
   const handleTouchMove = (e) => {
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       handleMove(touch.clientX, touch.clientY);
@@ -86,7 +90,9 @@ function Joystick({ onMove }) {
   };
 
   const handleTouchEnd = (e) => {
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     handleEnd();
   };
 

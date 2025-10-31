@@ -7,6 +7,7 @@ import {
   zooAreas,
   calculateDistance,
   getCongestionColor,
+  calculateBearing,
 } from "../data/mockData";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -253,7 +254,6 @@ function MapView({
 
       el.addEventListener("click", () => {
         setSelectedMarker(area);
-        onDestinationToggle && onDestinationToggle(area.id);
       });
 
       const marker = new mapboxgl.Marker(el)
@@ -312,8 +312,31 @@ function MapView({
   };
 
   useEffect(() => {
-    if (map.current && currentPath) {
-      addRoute();
+    if (map.current) {
+      if (currentPath) {
+        addRoute();
+        if (currentPath.areas && currentPath.areas.length >= 2) {
+          const start = currentPath.areas[0];
+          const end = currentPath.areas[1];
+          const bearing = calculateBearing(
+            start.latitude,
+            start.longitude,
+            end.latitude,
+            end.longitude
+          );
+          map.current.easeTo({
+            bearing: bearing,
+            duration: 1000,
+          });
+        }
+      } else {
+        if (map.current.getLayer("route")) {
+          map.current.removeLayer("route");
+        }
+        if (map.current.getSource("route")) {
+          map.current.removeSource("route");
+        }
+      }
     }
   }, [currentPath]);
 
@@ -454,13 +477,19 @@ function MapView({
 
             {selectedMarker.id !== "main-gate" && (
               <button
-                className="ar-navigate-btn"
+                className={`ar-navigate-btn ${
+                  selectedDestinations.includes(selectedMarker.id)
+                    ? "selected"
+                    : ""
+                }`}
                 onClick={() => {
-                  onAreaSelect && onAreaSelect(selectedMarker);
+                  onDestinationToggle && onDestinationToggle(selectedMarker.id);
                   setSelectedMarker(null);
                 }}
               >
-                🧭 여기로 안내
+                {selectedDestinations.includes(selectedMarker.id)
+                  ? "✕ 경로에서 제거하기"
+                  : "➕ 경로에 추가하기"}
               </button>
             )}
           </div>

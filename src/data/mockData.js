@@ -462,7 +462,8 @@ export const findOptimalPath = (
 export const recommendRoute = (
   selectedDestinations,
   userPosition = currentLocation,
-  attendingEvents = new Set()
+  attendingEvents = new Set(),
+  forcedRecommendations = new Set()
 ) => {
   if (!selectedDestinations || selectedDestinations.length === 0) {
     return null;
@@ -505,7 +506,7 @@ export const recommendRoute = (
     };
   });
 
-  const nearbyDestinations = destinationsWithEvents.map((dest) => {
+  const destinationsWithDistance = destinationsWithEvents.map((dest) => {
     const distance = calculateDistance(
       userPosition.latitude,
       userPosition.longitude,
@@ -513,66 +514,120 @@ export const recommendRoute = (
       dest.longitude
     );
 
-    return {
-      ...dest,
-      distance,
-    };
-  });
-
-  const validDestinations = nearbyDestinations.map((dest) => {
-    const directDistance = dest.distance;
-
-    const isEventUrgent =
-      dest.hasEvent &&
-      dest.timeUntilEvent !== null &&
-      dest.timeUntilEvent <= 60;
-
+    const directDistance = distance;
     const congestionMultiplier = 1 + dest.congestionLevel * 0.3;
     const congestedDistance = directDistance * congestionMultiplier;
 
-    return {
-      ...dest,
-      congestedDistance,
-      congestionMultiplier,
-    };
-  });
+    let recommended = true;
+    let notRecommendedReason = "";
 
-  const scoredDestinations = validDestinations.map((dest) => {
-    const distance = dest.distance;
+    if (distance > 600) {
+      recommended = false;
+      notRecommendedReason = `현재 위치에서 ${Math.round(
+        distance
+      )}m 떨어져 있어 방문이 어려워요`;
+    } else if (dest.congestionLevel > 0.8) {
+      recommended = false;
+      notRecommendedReason = "현재 매우 혼잡하여 관람이 어려울 수 있어요";
+    }
 
-    let score = 0;
-
-    if (dest.isAttending) {
-      score = -50000;
-    } else {
-      score += dest.priorityScore * 10000;
-
-      score += dest.congestionLevel * 500;
-
-      score += distance / 5;
-
-      if (
-        dest.hasEvent &&
-        dest.timeUntilEvent !== null &&
-        dest.timeUntilEvent > 0
-      ) {
-        score -= 2000;
-      }
+    if (forcedRecommendations.has(dest.id)) {
+      recommended = true;
+      notRecommendedReason = "";
     }
 
     return {
       ...dest,
-      calculatedScore: score,
       distance,
-      congestionMultiplier: 1 + dest.congestionLevel * 0.3,
+      congestedDistance,
+      congestionMultiplier,
+      recommended,
+      notRecommendedReason,
     };
   });
 
-  const finalRecommendations = scoredDestinations.sort((a, b) => {
-    return a.calculatedScore - b.calculatedScore;
+  const recommendedDestinations = destinationsWithDistance.filter(
+    (d) => d.recommended
+  );
+
+  let useCongestionOrder = false;
+  if (recommendedDestinations.length > 0) {
+    const sortedByDistance = [...recommendedDestinations].sort(
+      (a, b) => a.distance - b.distance
+    );
+    const sortedByCongestion = [...recommendedDestinations].sort(
+      (a, b) => a.congestionLevel - b.congestionLevel
+    );
+
+    const distanceOrderPath = calculateTotalPathDistance(
+      sortedByDistance,
+      userPosition
+    );
+    const congestionOrderPath = calculateTotalPathDistance(
+      sortedByCongestion,
+      userPosition
+    );
+
+    useCongestionOrder = congestionOrderPath <= distanceOrderPath * 2;
+
+    if (!useCongestionOrder) {
+      destinationsWithDistance.forEach((dest) => {
+        if (!dest.recommended) return;
+        dest.recommended = false;
+        dest.notRecommendedReason =
+          "혼잡도 우선 경로가 거리 우선 경로보다 2배 이상 멀어요";
+      });
+    }
+  }
+
+  const finalRecommendations = destinationsWithDistance.sort((a, b) => {
+    if (a.recommended !== b.recommended) {
+      return a.recommended ? -1 : 1;
+    }
+
+    if (a.isAttending !== b.isAttending) {
+      return a.isAttending ? -1 : 1;
+    }
+
+    if (a.hasEvent && b.hasEvent) {
+      if (a.priorityScore !== b.priorityScore) {
+        return b.priorityScore - a.priorityScore;
+      }
+    } else if (a.hasEvent !== b.hasEvent) {
+      return a.hasEvent ? -1 : 1;
+    }
+
+    if (useCongestionOrder) {
+      if (Math.abs(a.congestionLevel - b.congestionLevel) > 0.1) {
+        return a.congestionLevel - b.congestionLevel;
+      }
+      return a.distance - b.distance;
+    } else {
+      return a.distance - b.distance;
+    }
   });
 
   return finalRecommendations;
+};
+
+const calculateTotalPathDistance = (sortedDestinations, startPosition) => {
+  if (sortedDestinations.length === 0) return 0;
+
+  let totalDistance = 0;
+  let currentPos = startPosition;
+
+  for (const dest of sortedDestinations) {
+    const distance = calculateDistance(
+      currentPos.latitude,
+      currentPos.longitude,
+      dest.latitude,
+      dest.longitude
+    );
+    totalDistance += distance;
+    currentPos = { latitude: dest.latitude, longitude: dest.longitude };
+  }
+
+  return totalDistance;
 };
 
 const calculateEventPriority = (timeUntilEvent, event, isAttending = false) => {

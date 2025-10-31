@@ -59,7 +59,7 @@ function CompactDirectionOverlay({
   const config = directionConfig[direction];
 
   return (
-    <div className="compact-direction-overlay">
+    <div className="compact-direction-overlay navigation-style">
       <button
         className="close-direction-btn"
         onClick={() => {
@@ -67,21 +67,35 @@ function CompactDirectionOverlay({
             onClose();
           }
         }}
+        title="경로 안내 종료"
       >
         ✕
       </button>
 
-      <div className="compact-view" onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="compact-arrow" style={{ color: config.color }}>
+      <div className="navigation-main">
+        <div className="navigation-arrow" style={{ color: config.color }}>
           {config.icon}
         </div>
-        <div className="compact-info">
-          <div className="compact-destination">
-            {nextStop.emoji} {nextStop.name}
-          </div>
-          <div className="compact-distance">{distance}m</div>
+        <div
+          className="navigation-direction-text"
+          style={{ color: config.color }}
+        >
+          {config.text}
         </div>
-        <div className="expand-indicator">{isExpanded ? "▼" : "▲"}</div>
+        <div className="navigation-distance">
+          <span className="distance-value">{distance}</span>
+          <span className="distance-unit">m</span>
+        </div>
+        <div className="navigation-destination">
+          <span className="destination-label">목적지</span>
+          <span className="destination-name">
+            {nextStop.emoji} {nextStop.name}
+          </span>
+        </div>
+      </div>
+
+      <div className="expand-toggle" onClick={() => setIsExpanded(!isExpanded)}>
+        <span>{isExpanded ? "상세 정보 접기 ▼" : "상세 정보 펼치기 ▲"}</span>
       </div>
 
       {isExpanded && (

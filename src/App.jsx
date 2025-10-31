@@ -11,6 +11,7 @@ import {
   updateCongestionLevels,
   recommendRoute,
   checkEventAttendance,
+  gpsToPosition,
 } from "./data/mockData";
 import "./App.css";
 
@@ -26,6 +27,12 @@ function App() {
   const [showTravelConfirmModal, setShowTravelConfirmModal] = useState(null);
   const [attendingEvents, setAttendingEvents] = useState(new Set());
   const [categoryFilter, setCategoryFilter] = useState([]);
+  const [forcedRecommendations, setForcedRecommendations] = useState(new Set());
+  const [activeRouteIndex, setActiveRouteIndex] = useState(0);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [showNextDestinationModal, setShowNextDestinationModal] =
+    useState(false);
+  const [showStopNavigationModal, setShowStopNavigationModal] = useState(false);
 
   const firstPersonModeRef = useRef(firstPersonMode);
   const userPositionRef = useRef(userPosition);
@@ -83,8 +90,11 @@ function App() {
   const handleEventAttendance = useCallback(
     (willAttend) => {
       if (showEventModal) {
-        if (willAttend) {
+        if (!selectedDestinations.includes(showEventModal.areaId)) {
           setSelectedDestinations((prev) => [...prev, showEventModal.areaId]);
+        }
+
+        if (willAttend) {
           setAttendingEvents(
             (prev) => new Set([...prev, showEventModal.areaId])
           );
@@ -95,10 +105,10 @@ function App() {
             return newSet;
           });
         }
+        setShowEventModal(null);
       }
-      setShowEventModal(null);
     },
-    [showEventModal]
+    [showEventModal, selectedDestinations]
   );
 
   useEffect(() => {
@@ -106,14 +116,71 @@ function App() {
       const recommendations = recommendRoute(
         selectedDestinations,
         userPosition,
-        attendingEvents
+        attendingEvents,
+        forcedRecommendations
       );
       setRecommendedRoute(recommendations);
     } else {
       setRecommendedRoute(null);
       setCurrentPath(null);
     }
-  }, [selectedDestinations, userPosition, attendingEvents]);
+  }, [
+    selectedDestinations,
+    userPosition,
+    attendingEvents,
+    forcedRecommendations,
+  ]);
+
+  useEffect(() => {
+    if (!isNavigating || !recommendedRoute || !currentPath) return;
+
+    const currentDest = recommendedRoute[activeRouteIndex];
+    if (!currentDest) return;
+
+    const distanceToDest = Math.sqrt(
+      Math.pow((userPosition.latitude - currentDest.latitude) * 111320, 2) +
+        Math.pow((userPosition.longitude - currentDest.longitude) * 88740, 2)
+    );
+
+    if (distanceToDest < 30 && !showNextDestinationModal) {
+      if (activeRouteIndex < recommendedRoute.length - 1) {
+        const nextIndex = activeRouteIndex + 1;
+        const nextDest = recommendedRoute[nextIndex];
+        setActiveRouteIndex(nextIndex);
+        const path = {
+          areas: [
+            {
+              ...userPosition,
+              id: "current-position",
+              name: "현재 위치",
+              position: gpsToPosition(
+                userPosition.latitude,
+                userPosition.longitude
+              ),
+            },
+            nextDest,
+          ],
+          totalDistance: nextDest.distance || 0,
+          estimatedTime: Math.ceil((nextDest.distance || 0) / 67),
+        };
+        setCurrentPath(path);
+      } else {
+        setIsNavigating(false);
+        setCurrentPath(null);
+        setActiveRouteIndex(0);
+        alert("🎉 모든 목적지에 도착했습니다!");
+      }
+      setShowNextDestinationModal(true);
+      setTimeout(() => setShowNextDestinationModal(false), 1000);
+    }
+  }, [
+    userPosition,
+    isNavigating,
+    recommendedRoute,
+    activeRouteIndex,
+    currentPath,
+    showNextDestinationModal,
+  ]);
 
   const handleAreaSelect = useCallback(
     (area) => {
@@ -238,12 +305,22 @@ function App() {
         (target && (target.composedPath ? target.composedPath() : null)) || [];
       if (Array.isArray(path) && path.length) {
         return path.some(
-          (el) => el && el.classList && el.classList.contains("navigation-ui")
+          (el) =>
+            el &&
+            el.classList &&
+            (el.classList.contains("navigation-ui") ||
+              el.classList.contains("event-modal") ||
+              el.classList.contains("travel-modal"))
         );
       }
       let node = target;
       while (node) {
-        if (node.classList && node.classList.contains("navigation-ui"))
+        if (
+          node.classList &&
+          (node.classList.contains("navigation-ui") ||
+            node.classList.contains("event-modal") ||
+            node.classList.contains("travel-modal"))
+        )
           return true;
         node = node.parentElement;
       }
@@ -283,7 +360,13 @@ function App() {
               <CompactDirectionOverlay
                 currentPath={currentPath}
                 userPosition={[0, 0, 0]}
-                onClose={() => setCurrentPath(null)}
+                onClose={() => {
+                  if (isNavigating) {
+                    setShowStopNavigationModal(true);
+                  } else {
+                    setCurrentPath(null);
+                  }
+                }}
               />
             )}
           </CameraView>
@@ -320,6 +403,10 @@ function App() {
           lockDestinationPanel={!!showEventModal}
           onCategoryFilter={setCategoryFilter}
           selectedCategory={categoryFilter}
+          forcedRecommendations={forcedRecommendations}
+          onForceRecommend={(areaId) =>
+            setForcedRecommendations((prev) => new Set([...prev, areaId]))
+          }
         />
       )}
 
@@ -345,8 +432,11 @@ function App() {
       )}
 
       {showEventModal && (
-        <div className="event-modal-overlay">
-          <div className="event-modal">
+        <div
+          className="event-modal-overlay"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="event-modal" onClick={(e) => e.stopPropagation()}>
             <h3>🎉 이벤트 참석 확인</h3>
             <div className="event-info">
               <h4>{showEventModal.eventCheck.event.name}</h4>
@@ -368,13 +458,19 @@ function App() {
             <div className="modal-buttons">
               <button
                 className="btn-secondary"
-                onClick={() => handleEventAttendance(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEventAttendance(false);
+                }}
               >
-                취소
+                참석하지 않기
               </button>
               <button
                 className="btn-primary"
-                onClick={() => handleEventAttendance(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEventAttendance(true);
+                }}
               >
                 참석하기
               </button>
@@ -449,16 +545,214 @@ function App() {
                 className="btn-primary"
                 onClick={() => {
                   if (recommendedRoute && recommendedRoute.length > 0) {
-                    const path = findOptimalPath(
-                      "main-gate",
-                      recommendedRoute[0].id
+                    const validRoute = recommendedRoute.filter(
+                      (dest) =>
+                        dest.recommended !== false ||
+                        forcedRecommendations.has(dest.id)
                     );
+                    if (validRoute.length === 0) {
+                      alert(
+                        "추천 가능한 시설이 없습니다. 다른 시설을 선택해주세요."
+                      );
+                      setShowTravelConfirmModal(null);
+                      return;
+                    }
+                    setIsNavigating(true);
+                    setActiveRouteIndex(0);
+                    setRecommendedRoute(validRoute);
+                    const firstDest = validRoute[0];
+                    const path = {
+                      areas: [
+                        {
+                          ...userPosition,
+                          id: "current-position",
+                          name: "현재 위치",
+                          position: gpsToPosition(
+                            userPosition.latitude,
+                            userPosition.longitude
+                          ),
+                        },
+                        firstDest,
+                      ],
+                      totalDistance: firstDest.distance || 0,
+                      estimatedTime: Math.ceil((firstDest.distance || 0) / 67),
+                    };
                     setCurrentPath(path);
                   }
                   setShowTravelConfirmModal(null);
                 }}
               >
                 🚶 경로 안내 시작
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNextDestinationModal && recommendedRoute && (
+        <div className="event-modal-overlay">
+          <div className="event-modal">
+            <h3>
+              ✅ {recommendedRoute[activeRouteIndex]?.name}에 도착했습니다!
+            </h3>
+            <div className="event-info">
+              {activeRouteIndex < recommendedRoute.length - 1 ? (
+                <>
+                  <p>다음 목적지로 안내를 시작할까요?</p>
+                  <div className="next-destination-info">
+                    <h4>
+                      📍 다음: {recommendedRoute[activeRouteIndex + 1]?.emoji}{" "}
+                      {recommendedRoute[activeRouteIndex + 1]?.name}
+                    </h4>
+                    <p>
+                      거리: 약{" "}
+                      {Math.round(
+                        Math.sqrt(
+                          Math.pow(
+                            (userPosition.latitude -
+                              recommendedRoute[activeRouteIndex + 1]
+                                ?.latitude) *
+                              111320,
+                            2
+                          ) +
+                            Math.pow(
+                              (userPosition.longitude -
+                                recommendedRoute[activeRouteIndex + 1]
+                                  ?.longitude) *
+                                88740,
+                              2
+                            )
+                        )
+                      )}
+                      m
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p>🎉 모든 목적지를 방문하셨습니다!</p>
+              )}
+            </div>
+            <div className="modal-buttons">
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setIsNavigating(false);
+                  setCurrentPath(null);
+                  setShowNextDestinationModal(false);
+                  setActiveRouteIndex(0);
+                }}
+              >
+                안내 종료
+              </button>
+              {activeRouteIndex < recommendedRoute.length - 1 && (
+                <>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      setShowNextDestinationModal(false);
+                      const newRecommendations = recommendRoute(
+                        selectedDestinations.filter(
+                          (id) => id !== recommendedRoute[activeRouteIndex].id
+                        ),
+                        userPosition,
+                        attendingEvents,
+                        forcedRecommendations
+                      );
+                      setRecommendedRoute(newRecommendations);
+                      setActiveRouteIndex(0);
+                      if (newRecommendations && newRecommendations.length > 0) {
+                        const firstDest = newRecommendations[0];
+                        const path = {
+                          areas: [
+                            {
+                              ...userPosition,
+                              id: "current-position",
+                              name: "현재 위치",
+                              position: gpsToPosition(
+                                userPosition.latitude,
+                                userPosition.longitude
+                              ),
+                            },
+                            firstDest,
+                          ],
+                          totalDistance: firstDest.distance || 0,
+                          estimatedTime: Math.ceil(
+                            (firstDest.distance || 0) / 67
+                          ),
+                        };
+                        setCurrentPath(path);
+                      }
+                    }}
+                  >
+                    경로 재추천
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      setShowNextDestinationModal(false);
+                      const nextIndex = activeRouteIndex + 1;
+                      setActiveRouteIndex(nextIndex);
+                      const nextDest = recommendedRoute[nextIndex];
+                      const path = {
+                        areas: [
+                          {
+                            ...userPosition,
+                            id: "current-position",
+                            name: "현재 위치",
+                            position: gpsToPosition(
+                              userPosition.latitude,
+                              userPosition.longitude
+                            ),
+                          },
+                          nextDest,
+                        ],
+                        totalDistance: nextDest.distance || 0,
+                        estimatedTime: Math.ceil((nextDest.distance || 0) / 67),
+                      };
+                      setCurrentPath(path);
+                    }}
+                  >
+                    다음 목적지로
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showStopNavigationModal && (
+        <div
+          className="event-modal-overlay"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="event-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>⚠️ 경로 안내를 종료하시겠습니까?</h3>
+            <div className="event-info">
+              <p>현재 진행 중인 경로 안내가 종료됩니다.</p>
+              <p>추천 경로는 그대로 유지됩니다.</p>
+            </div>
+            <div className="modal-buttons">
+              <button
+                className="btn-secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowStopNavigationModal(false);
+                }}
+              >
+                취소
+              </button>
+              <button
+                className="btn-primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsNavigating(false);
+                  setCurrentPath(null);
+                  setShowStopNavigationModal(false);
+                  setActiveRouteIndex(0);
+                }}
+              >
+                안내 종료
               </button>
             </div>
           </div>

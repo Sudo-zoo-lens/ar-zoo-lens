@@ -23,6 +23,8 @@ function NavigationUI({
   lockDestinationPanel = false,
   onCategoryFilter,
   selectedCategory: externalSelectedCategory,
+  forcedRecommendations = new Set(),
+  onForceRecommend,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDestinationOpen, setIsDestinationOpen] = useState(false);
@@ -34,6 +36,7 @@ function NavigationUI({
   const [showLegend, setShowLegend] = useState(false);
   const selectedCategory = externalSelectedCategory;
   const [localSelectedCategory, setLocalSelectedCategory] = useState(null);
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [, forceUpdate] = useState(0);
 
   const handleCategoryClick = (category) => {
@@ -99,11 +102,10 @@ function NavigationUI({
 
   // closePanels prop 변경 시 모든 패널 닫기
   useEffect(() => {
-    if (closePanels !== undefined) {
-      if (lockDestinationPanel) return;
+    if (closePanels !== undefined && !lockDestinationPanel) {
       closeAllPanels();
     }
-  }, [closePanels, lockDestinationPanel]);
+  }, [closePanels]);
 
   // 거리 계산 함수 (간단한 유클리드 거리)
   const calculateDistance = (area) => {
@@ -112,12 +114,14 @@ function NavigationUI({
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  // 정렬된 구역 목록 (카테고리 필터링 포함)
+  // 정렬된 구역 목록 (카테고리 필터링 - 필터링된 항목 숨김)
   const sortedAreas = [...zooAreas]
     .filter((area) => area.id !== "main-gate")
     .filter((area) => {
-      if (!localSelectedCategory) return true;
-      return area.category === localSelectedCategory;
+      if (localSelectedCategory && area.category !== localSelectedCategory) {
+        return false;
+      }
+      return true;
     })
     .sort((a, b) => {
       if (sortBy === "congestion") {
@@ -411,9 +415,29 @@ function NavigationUI({
             {/* 헤더와 닫기 버튼 */}
             <div className="panel-header">
               <h3>⭐ 추천 경로</h3>
-              <button className="close-btn" onClick={closeAllPanels}>
-                ✕
-              </button>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  className="reset-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowResetConfirmModal(true);
+                  }}
+                  style={{
+                    padding: "8px 12px",
+                    fontSize: "14px",
+                    background: "#ff5252",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  🗑️ 초기화
+                </button>
+                <button className="close-btn" onClick={closeAllPanels}>
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* 추천 순서 표시 */}
@@ -421,11 +445,12 @@ function NavigationUI({
               {recommendedRoute.map((dest, index) => {
                 const event = dest.event;
                 const isAttending = dest.isAttending;
+                const isRecommended = dest.recommended !== false;
                 const distance = Math.round(
                   Math.sqrt(
                     Math.pow(dest.latitude - currentLocation.latitude, 2) +
                       Math.pow(dest.longitude - currentLocation.longitude, 2)
-                  ) * 111320 // 대략적인 미터 변환
+                  ) * 111320
                 );
 
                 return (
@@ -433,16 +458,23 @@ function NavigationUI({
                     key={dest.id}
                     className={`recommendation-item ${
                       isAttending ? "attending-event" : ""
-                    }`}
+                    } ${!isRecommended ? "not-recommended" : ""}`}
                   >
                     <div
                       className={`recommendation-rank ${
                         isAttending ? "attending-rank" : ""
-                      }`}
+                      } ${!isRecommended ? "not-recommended-rank" : ""}`}
                     >
-                      <span className="rank-number">{index + 1}</span>
+                      <span className="rank-number">
+                        {isRecommended ? index + 1 : "⚠️"}
+                      </span>
                     </div>
                     <div className="recommendation-content">
+                      {!isRecommended && (
+                        <div className="not-recommended-badge">
+                          🚫 방문 비추천
+                        </div>
+                      )}
                       <div className="recommendation-header">
                         <span className="recommendation-emoji">
                           {dest.emoji}
@@ -464,6 +496,11 @@ function NavigationUI({
                           혼잡도: {getCongestionLabel(dest.congestionLevel)}
                         </span>
                       </div>
+                      {!isRecommended && dest.notRecommendedReason && (
+                        <div className="not-recommended-reason">
+                          💡 {dest.notRecommendedReason}
+                        </div>
+                      )}
                       {event && (
                         <div className="event-details">
                           <div className="event-schedule">
@@ -480,6 +517,19 @@ function NavigationUI({
                           </div>
                         </div>
                       )}
+                      {!isRecommended && (
+                        <button
+                          className="force-add-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onForceRecommend) {
+                              onForceRecommend(dest.id);
+                            }
+                          }}
+                        >
+                          💪 그래도 추가하기
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -488,19 +538,19 @@ function NavigationUI({
 
             {/* 우선순위 설명 */}
             <div className="priority-explanation">
-              <h4>🎯 우선순위 기준</h4>
+              <h4>🎯 추천 기준</h4>
               <ul>
-                <li>1. 참석하는 이벤트 (최우선)</li>
-                <li>2. 이벤트 시간 (30분 이내 최우선)</li>
-                <li>3. 이벤트 시설은 1000m까지 고려</li>
-                <li>4. 임박한 이벤트는 혼잡도 조건 완화</li>
-                <li>5. 혼잡도가 낮은 경로 우선</li>
-                <li>6. 거리가 가까운 순서로 정렬</li>
+                <li>✅ 1. 이벤트 시간 (참석 중 최우선)</li>
+                <li>✅ 2. 혼잡도순 경로 ≤ 거리순 경로×2 체크</li>
+                <li>✅ 3. 혼잡도 낮은 순 정렬</li>
+                <li>✅ 4. 거리 가까운 순 정렬</li>
               </ul>
               <div className="algorithm-info">
                 <p className="algorithm-note">
-                  💡 참석하는 이벤트가 있으면 해당 시설을 가장 먼저 방문하도록
-                  경로를 추천합니다.
+                  ⚠️ 600m 이상 떨어진 시설이나 매우 혼잡한 시설, 또는 혼잡도
+                  우선 경로가 거리 우선 경로보다 2배 이상 먼 경우는 "방문
+                  비추천"으로 표시됩니다. 선택된 모든 시설은 경로에 포함되며,
+                  추천 시설이 우선 순위를 갖습니다.
                 </p>
               </div>
             </div>
@@ -510,9 +560,12 @@ function NavigationUI({
               <div style={{ padding: "20px", borderTop: "1px solid #ddd" }}>
                 <button
                   className="start-navigation-btn"
-                  onClick={() =>
-                    onTravelConfirm && onTravelConfirm(recommendedRoute)
-                  }
+                  onClick={() => {
+                    if (onTravelConfirm) {
+                      onTravelConfirm(recommendedRoute);
+                      closeAllPanels();
+                    }
+                  }}
                 >
                   🚶 이 경로로 이동하시겠습니까?
                 </button>
@@ -823,6 +876,47 @@ function NavigationUI({
                 onClick={() => setShowVideoModal(false)}
               >
                 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 초기화 확인 모달 */}
+      {showResetConfirmModal && (
+        <div
+          className="event-modal-overlay"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="event-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>🗑️ 경로 초기화</h3>
+            <div className="event-info">
+              <p>추천 경로를 초기화하시겠습니까?</p>
+              <p style={{ color: "#ff5252", fontWeight: "500" }}>
+                선택한 모든 목적지가 제거됩니다.
+              </p>
+            </div>
+            <div className="modal-buttons">
+              <button
+                className="btn-secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowResetConfirmModal(false);
+                }}
+              >
+                취소
+              </button>
+              <button
+                className="btn-primary"
+                style={{ background: "#ff5252" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  selectedDestinations.forEach((id) => onDestinationToggle(id));
+                  setShowResetConfirmModal(false);
+                  closeAllPanels();
+                }}
+              >
+                초기화
               </button>
             </div>
           </div>

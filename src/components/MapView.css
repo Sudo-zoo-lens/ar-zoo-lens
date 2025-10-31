@@ -188,6 +188,15 @@
   transform: translateY(0);
 }
 
+.ar-navigate-btn.selected {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+.ar-navigate-btn.selected:hover {
+  box-shadow: 0 6px 16px rgba(244, 67, 54, 0.5);
+}
+
 /* AR 안내 취소 버튼 */
 .ar-cancel-btn {
   position: absolute;
