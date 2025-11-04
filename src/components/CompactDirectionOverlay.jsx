@@ -18,21 +18,44 @@ function CompactDirectionOverlay({
       return;
     }
 
-    const nextArea = currentPath.areas[1];
-    setNextStop(nextArea);
+    const currentLat = userPosition.latitude || currentPath.areas[0].latitude;
+    const currentLng = userPosition.longitude || currentPath.areas[0].longitude;
 
+    let nextArea = null;
+    let minDistance = Infinity;
+    const REACHED_THRESHOLD = 10; // 10m 이내면 도착한 것으로 간주
+
+    for (let i = 1; i < currentPath.areas.length; i++) {
+      const area = currentPath.areas[i];
+      const dist = calculateDistance(
+        currentLat,
+        currentLng,
+        area.latitude,
+        area.longitude
+      );
+
+      if (dist > REACHED_THRESHOLD && dist < minDistance) {
+        minDistance = dist;
+        nextArea = area;
+      }
+    }
+
+    if (!nextArea) {
+      nextArea = currentPath.areas[currentPath.areas.length - 1];
+      minDistance = calculateDistance(
+        currentLat,
+        currentLng,
+        nextArea.latitude,
+        nextArea.longitude
+      );
+    }
+
+    setNextStop(nextArea);
+    setDistance(Math.round(minDistance));
+
+    // 현재 위치에서 다음 웨이포인트로의 방향 계산
     const dx = nextArea.position[0] - userPosition[0];
     const dz = nextArea.position[2] - userPosition[2];
-
-    // 실제 GPS 거리 계산 (미터 단위)
-    const currentArea = currentPath.areas[0];
-    const dist = calculateDistance(
-      currentArea.latitude,
-      currentArea.longitude,
-      nextArea.latitude,
-      nextArea.longitude
-    );
-    setDistance(Math.round(dist));
 
     let angle = Math.atan2(dx, -dz) * (180 / Math.PI);
 
@@ -114,7 +137,7 @@ function CompactDirectionOverlay({
             <div className="route-steps">
               {currentPath.areas.map((area, index) => (
                 <div
-                  key={area.id}
+                  key={area.id || `waypoint-${index}`}
                   className={`route-step ${index === 0 ? "current" : ""} ${
                     index === 1 ? "next" : ""
                   }`}

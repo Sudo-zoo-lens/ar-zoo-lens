@@ -321,8 +321,8 @@ function NavigationUI({
                   })}
                 </div>
 
-                {/* 추천 경로 보기 버튼 (2개 이상 선택 시) */}
-                {selectedDestinations.length >= 2 && (
+                {/* 추천 경로 보기 버튼 (1개 이상 선택 시) */}
+                {selectedDestinations.length >= 1 && (
                   <div className="route-recommendation-section">
                     <button
                       className="route-recommendation-btn"
@@ -333,7 +333,9 @@ function NavigationUI({
                       <span className="btn-arrow">→</span>
                     </button>
                     <p className="route-description">
-                      이벤트 시간과 혼잡도를 고려한 최적 경로를 추천합니다
+                      {selectedDestinations.length === 1
+                        ? "정문에서 선택한 목적지까지 경로를 안내합니다"
+                        : "이벤트 시간과 혼잡도를 고려한 최적 경로를 추천합니다"}
                     </p>
                   </div>
                 )}
@@ -556,7 +558,7 @@ function NavigationUI({
             </div>
 
             {/* 경로 안내 시작 버튼 */}
-            {selectedDestinations.length >= 2 && (
+            {selectedDestinations.length >= 1 && (
               <div style={{ padding: "20px", borderTop: "1px solid #ddd" }}>
                 <button
                   className="start-navigation-btn"
@@ -570,8 +572,9 @@ function NavigationUI({
                   🚶 이 경로로 이동하시겠습니까?
                 </button>
                 <p className="navigation-description">
-                  선택하신 {selectedDestinations.length}개 장소를 최적 순서로
-                  안내합니다
+                  {selectedDestinations.length === 1
+                    ? "정문에서 선택하신 장소로 안내합니다"
+                    : `선택하신 ${selectedDestinations.length}개 장소를 최적 순서로 안내합니다`}
                 </p>
               </div>
             )}

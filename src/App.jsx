@@ -147,23 +147,30 @@ function App() {
         const nextIndex = activeRouteIndex + 1;
         const nextDest = recommendedRoute[nextIndex];
         setActiveRouteIndex(nextIndex);
-        const path = {
-          areas: [
-            {
-              ...userPosition,
-              id: "current-position",
-              name: "현재 위치",
-              position: gpsToPosition(
-                userPosition.latitude,
-                userPosition.longitude
-              ),
-            },
-            nextDest,
-          ],
-          totalDistance: nextDest.distance || 0,
-          estimatedTime: Math.ceil((nextDest.distance || 0) / 67),
-        };
-        setCurrentPath(path);
+
+        const path = findOptimalPath(currentDest.id, nextDest.id, true);
+
+        if (path) {
+          setCurrentPath(path);
+        } else {
+          const fallbackPath = {
+            areas: [
+              {
+                ...userPosition,
+                id: "current-position",
+                name: "현재 위치",
+                position: gpsToPosition(
+                  userPosition.latitude,
+                  userPosition.longitude
+                ),
+              },
+              nextDest,
+            ],
+            totalDistance: nextDest.distance || 0,
+            estimatedTime: Math.ceil((nextDest.distance || 0) / 67),
+          };
+          setCurrentPath(fallbackPath);
+        }
       } else {
         setIsNavigating(false);
         setCurrentPath(null);
@@ -561,23 +568,36 @@ function App() {
                     setActiveRouteIndex(0);
                     setRecommendedRoute(validRoute);
                     const firstDest = validRoute[0];
-                    const path = {
-                      areas: [
-                        {
-                          ...userPosition,
-                          id: "current-position",
-                          name: "현재 위치",
-                          position: gpsToPosition(
-                            userPosition.latitude,
-                            userPosition.longitude
-                          ),
-                        },
-                        firstDest,
-                      ],
-                      totalDistance: firstDest.distance || 0,
-                      estimatedTime: Math.ceil((firstDest.distance || 0) / 67),
-                    };
-                    setCurrentPath(path);
+
+                    const path = findOptimalPath(
+                      "main-gate",
+                      firstDest.id,
+                      true
+                    );
+
+                    if (path) {
+                      setCurrentPath(path);
+                    } else {
+                      const fallbackPath = {
+                        areas: [
+                          {
+                            ...userPosition,
+                            id: "current-position",
+                            name: "현재 위치",
+                            position: gpsToPosition(
+                              userPosition.latitude,
+                              userPosition.longitude
+                            ),
+                          },
+                          firstDest,
+                        ],
+                        totalDistance: firstDest.distance || 0,
+                        estimatedTime: Math.ceil(
+                          (firstDest.distance || 0) / 67
+                        ),
+                      };
+                      setCurrentPath(fallbackPath);
+                    }
                   }
                   setShowTravelConfirmModal(null);
                 }}

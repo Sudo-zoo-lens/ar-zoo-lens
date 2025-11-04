@@ -96,6 +96,20 @@ function Joystick({ onMove }) {
     handleEnd();
   };
 
+  useEffect(() => {
+    const joystick = joystickRef.current;
+    if (joystick) {
+      joystick.addEventListener("touchstart", handleTouchStart, {
+        passive: false,
+      });
+    }
+    return () => {
+      if (joystick) {
+        joystick.removeEventListener("touchstart", handleTouchStart);
+      }
+    };
+  }, []);
+
   // 전역 이벤트 리스너 등록
   useEffect(() => {
     if (isDragging) {
@@ -121,7 +135,6 @@ function Joystick({ onMove }) {
         ref={joystickRef}
         className="joystick-base"
         onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
       >
         <div
           ref={knobRef}

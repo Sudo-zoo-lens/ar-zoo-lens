@@ -13,10 +13,7 @@ function PathGuide({ path }) {
       (area) => new THREE.Vector3(area.position[0], 0.1, area.position[2])
     );
 
-    const curve = new THREE.CatmullRomCurve3(points);
-    const curvePoints = curve.getPoints(50);
-
-    return new THREE.BufferGeometry().setFromPoints(curvePoints);
+    return new THREE.BufferGeometry().setFromPoints(points);
   }, [path]);
 
   useFrame((state) => {
@@ -98,6 +95,7 @@ function PathGuide({ path }) {
 
       {arrows}
 
+      {/* 시작점 (초록색) */}
       <mesh
         position={[path.areas[0].position[0], 0.15, path.areas[0].position[2]]}
       >
@@ -109,6 +107,24 @@ function PathGuide({ path }) {
         />
       </mesh>
 
+      {/* 중간 웨이포인트 마커 (하늘색) */}
+      {path.areas.slice(1, -1).map((area, index) => (
+        <mesh
+          key={`waypoint-${index}`}
+          position={[area.position[0], 0.12, area.position[2]]}
+        >
+          <sphereGeometry args={[0.08, 12, 12]} />
+          <meshStandardMaterial
+            color="#00ffff"
+            emissive="#00ffff"
+            emissiveIntensity={0.4}
+            transparent
+            opacity={0.7}
+          />
+        </mesh>
+      ))}
+
+      {/* 최종 목적지 (빨간색) */}
       <mesh
         position={[
           path.areas[path.areas.length - 1].position[0],

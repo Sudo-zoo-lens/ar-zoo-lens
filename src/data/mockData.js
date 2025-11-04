@@ -369,33 +369,49 @@ export const findOptimalPath = (
   let pathPoints = [];
 
   if (useWaypoints) {
-    const waypointsBetween = findWaypoints(startAreaId, endAreaId);
+    const waypointsBetween = findWaypoints(
+      startArea.latitude,
+      startArea.longitude,
+      endArea.latitude,
+      endArea.longitude
+    );
+
+    pathPoints = [startArea];
 
     if (waypointsBetween && waypointsBetween.length > 0) {
-      pathPoints = waypointsBetween.map((wp) => ({
+      const waypointAreas = waypointsBetween.map((wp, idx) => ({
         latitude: wp.latitude,
         longitude: wp.longitude,
         position: gpsToPosition(wp.latitude, wp.longitude),
+        name: `경유지 ${idx + 1}`,
+        emoji: "📍",
       }));
+      pathPoints.push(...waypointAreas);
     } else {
-      pathPoints = [startArea];
-
       const intermediateAreas = zooAreas
         .filter((area) => area.id !== startAreaId && area.id !== endAreaId)
         .filter((area) => {
           const distToStart = getDistance(area.position, startArea.position);
           const distToEnd = getDistance(area.position, endArea.position);
           const totalDist = getDistance(startArea.position, endArea.position);
-          return distToStart + distToEnd < totalDist * 1.5;
+          return distToStart + distToEnd < totalDist * 1.3;
         })
-        .sort((a, b) => a.congestionLevel - b.congestionLevel);
+        .sort((a, b) => {
+          const aScore =
+            getDistance(a.position, startArea.position) +
+            getDistance(a.position, endArea.position);
+          const bScore =
+            getDistance(b.position, startArea.position) +
+            getDistance(b.position, endArea.position);
+          return aScore - bScore;
+        });
 
-      if (intermediateAreas.length > 0 && Math.random() > 0.5) {
+      if (intermediateAreas.length > 0) {
         pathPoints.push(intermediateAreas[0]);
       }
-
-      pathPoints.push(endArea);
     }
+
+    pathPoints.push(endArea);
   } else {
     pathPoints = [startArea];
 
