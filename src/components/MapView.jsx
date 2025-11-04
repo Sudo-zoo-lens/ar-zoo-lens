@@ -270,8 +270,12 @@ function MapView({
     }
   }, [categoryFilter, addMarkers]);
 
-  const addRoute = () => {
+  const addRoute = useCallback(() => {
     if (!currentPath || !map.current) return;
+
+    if (!map.current.isStyleLoaded()) {
+      return;
+    }
 
     const coordinates = currentPath.areas.map((area) => [
       area.longitude,
@@ -309,36 +313,44 @@ function MapView({
         "line-opacity": 0.8,
       },
     });
-  };
+  }, [currentPath]);
 
   useEffect(() => {
     if (map.current) {
       if (currentPath) {
-        addRoute();
-        if (currentPath.areas && currentPath.areas.length >= 2) {
-          const start = currentPath.areas[0];
-          const end = currentPath.areas[1];
-          const bearing = calculateBearing(
-            start.latitude,
-            start.longitude,
-            end.latitude,
-            end.longitude
-          );
-          map.current.easeTo({
-            bearing: bearing,
-            duration: 1000,
+        if (map.current.isStyleLoaded()) {
+          addRoute();
+          if (currentPath.areas && currentPath.areas.length >= 2) {
+            const start = currentPath.areas[0];
+            const end = currentPath.areas[1];
+            const bearing = calculateBearing(
+              start.latitude,
+              start.longitude,
+              end.latitude,
+              end.longitude
+            );
+            map.current.easeTo({
+              bearing: bearing,
+              duration: 1000,
+            });
+          }
+        } else {
+          map.current.once("style.load", () => {
+            addRoute();
           });
         }
       } else {
-        if (map.current.getLayer("route")) {
-          map.current.removeLayer("route");
-        }
-        if (map.current.getSource("route")) {
-          map.current.removeSource("route");
+        if (map.current.isStyleLoaded()) {
+          if (map.current.getLayer("route")) {
+            map.current.removeLayer("route");
+          }
+          if (map.current.getSource("route")) {
+            map.current.removeSource("route");
+          }
         }
       }
     }
-  }, [currentPath]);
+  }, [currentPath, addRoute]);
 
   useEffect(() => {
     if (map.current) {
