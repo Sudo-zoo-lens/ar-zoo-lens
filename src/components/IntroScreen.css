@@ -56,18 +56,13 @@
 .intro-btn {
   width: fit-content;
   padding: 16px 8px;
-
   font-size: 26px;
   font-weight: 700;
-
-  border: 2px solid #222222;
+  border: none;
   border-radius: 16px;
-
   background: #ffffff;
   color: #222222;
-
   cursor: pointer;
-
   transition: all 0.3s ease;
 }
 

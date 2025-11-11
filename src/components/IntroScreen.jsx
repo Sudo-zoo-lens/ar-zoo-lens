@@ -29,7 +29,7 @@ function IntroScreen({ onStart }) {
           )}
           <button
             className="intro-btn main-btn"
-            onClick={() => setShowOptions(true)}
+            onClick={() => setShowOptions(!showOptions)}
           >
             목적지 선택
           </button>
