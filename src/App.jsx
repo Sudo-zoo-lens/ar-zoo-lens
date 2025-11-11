@@ -1,6 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Canvas } from "@react-three/fiber";
-import ARScene from "./components/ARScene";
+import { useState, useEffect, useRef, useCallback } from "react";
 import MapView from "./components/MapView";
 import NavigationUI from "./components/NavigationUI";
 import CompactDirectionOverlay from "./components/CompactDirectionOverlay";
@@ -20,6 +18,7 @@ import "./App.css";
 function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [showIntro, setShowIntro] = useState(true);
+  const [initialPanelOpen, setInitialPanelOpen] = useState(false);
   const [selectedDestinations, setSelectedDestinations] = useState([]);
   const [currentPath, setCurrentPath] = useState(null);
   const [firstPersonMode, setFirstPersonMode] = useState(false);
@@ -56,12 +55,10 @@ function App() {
     setShowIntro(false);
     if (mode === "map") {
       setFirstPersonMode(false);
+      setInitialPanelOpen(false);
     } else if (mode === "list") {
       setFirstPersonMode(false);
-      // 목록 모드로 시작 (기본 동작과 동일)
-    } else {
-      // 'main' - 목적지 선택 (기본 동작)
-      setFirstPersonMode(false);
+      setInitialPanelOpen(true); // 목록보기를 누르면 목적지 선택 패널 열기
     }
   }, []);
 
@@ -226,6 +223,9 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // 목록보기 모드에서는 키보드 이동 비활성화
+      if (initialPanelOpen) return;
+
       if (
         event.target.tagName === "INPUT" ||
         event.target.tagName === "TEXTAREA"
@@ -312,7 +312,7 @@ function App() {
     return () => {
       document.removeEventListener("keydown", handleKeyDown, { capture: true });
     };
-  }, []);
+  }, [initialPanelOpen]);
 
   const handleMove = useCallback((direction) => {
     const moveDistance = 0.00001;
@@ -362,6 +362,8 @@ function App() {
     };
 
     const handlePointerStart = (event) => {
+      // 목록보기 모드(initialPanelOpen=true)일 때는 패널 닫기 방지
+      if (initialPanelOpen) return;
       if (isInsideNavigationUI(event.target)) return;
       setClosePanels((prev) => !prev);
     };
@@ -376,7 +378,7 @@ function App() {
       window.removeEventListener("touchstart", handlePointerStart);
       window.removeEventListener("mousedown", handlePointerStart);
     };
-  }, []);
+  }, [initialPanelOpen]);
 
   // 스플래시 화면 보여주기
   if (showSplash) {
@@ -451,10 +453,12 @@ function App() {
           onForceRecommend={(areaId) =>
             setForcedRecommendations((prev) => new Set([...prev, areaId]))
           }
+          initialPanelOpen={initialPanelOpen}
+          onPanelClose={() => setInitialPanelOpen(false)}
         />
       )}
 
-      {!firstPersonMode && (
+      {!firstPersonMode && !initialPanelOpen && (
         <MapView
           selectedDestinations={selectedDestinations}
           onAreaSelect={handleAreaSelect}
@@ -466,7 +470,7 @@ function App() {
         />
       )}
 
-      {!firstPersonMode && (
+      {!firstPersonMode && !initialPanelOpen && (
         <button
           className="enter-camera-btn"
           onClick={() => setFirstPersonMode(true)}

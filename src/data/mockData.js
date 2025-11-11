@@ -1,5 +1,3 @@
-import { findWaypoints } from "./waypoints";
-
 export const categoryColors = {
   GATE: "#2196F3",
   ANIMAL: "#FF9800",

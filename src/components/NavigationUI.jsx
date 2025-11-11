@@ -3,7 +3,6 @@ import {
   zooAreas,
   getCongestionColor,
   getCongestionLabel,
-  categoryColors,
   currentLocation,
   events,
 } from "../data/mockData";
@@ -25,54 +24,31 @@ function NavigationUI({
   selectedCategory: externalSelectedCategory,
   forcedRecommendations = new Set(),
   onForceRecommend,
+  initialPanelOpen = false,
+  onPanelClose,
 }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isDestinationOpen, setIsDestinationOpen] = useState(false);
+  const [isDestinationOpen, setIsDestinationOpen] = useState(initialPanelOpen);
   const [isRecommendationOpen, setIsRecommendationOpen] = useState(false);
-  const [isVideoOpen, setIsVideoOpen] = useState(false);
-  const [showVideoModal, setShowVideoModal] = useState(false);
-  const [currentVideoId, setCurrentVideoId] = useState("");
   const [sortBy, setSortBy] = useState("name"); // name, congestion, distance
-  const [showLegend, setShowLegend] = useState(false);
   const selectedCategory = externalSelectedCategory;
-  const [localSelectedCategory, setLocalSelectedCategory] = useState(null);
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
   const [, forceUpdate] = useState(0);
 
-  const handleCategoryClick = (category) => {
-    if (onCategoryFilter) {
-      const currentFilters = selectedCategory || [];
-      const isSelected = currentFilters.includes(category);
-
-      const newFilters = isSelected
-        ? currentFilters.filter((c) => c !== category)
-        : [...currentFilters, category];
-
-      onCategoryFilter(newFilters);
-    }
-  };
-
-  const clearAllFilters = () => {
-    if (onCategoryFilter) {
-      onCategoryFilter([]);
-    }
-  };
-
   // 모든 패널을 닫는 함수
   const closeAllPanels = () => {
-    setIsMenuOpen(false);
     setIsDestinationOpen(false);
     setIsRecommendationOpen(false);
-    setIsVideoOpen(false);
-    setShowVideoModal(false);
-    setShowLegend(false);
+    if (onPanelClose) {
+      onPanelClose();
+    }
   };
 
-  // 영상 재생 함수
-  const playVideo = (videoId) => {
-    setCurrentVideoId(videoId);
-    setShowVideoModal(true);
-  };
+  // initialPanelOpen이 변경되면 패널 상태 업데이트
+  useEffect(() => {
+    if (initialPanelOpen) {
+      setIsDestinationOpen(true);
+    }
+  }, [initialPanelOpen]);
 
   // 혼잡도 업데이트 시 강제 리렌더링
   useEffect(() => {
@@ -100,12 +76,16 @@ function NavigationUI({
     };
   }, [lockDestinationPanel]);
 
-  // closePanels prop 변경 시 모든 패널 닫기
+  // closePanels prop 변경 시 모든 패널 닫기 (단, initialPanelOpen이 true면 닫지 않음)
   useEffect(() => {
-    if (closePanels !== undefined && !lockDestinationPanel) {
+    if (
+      closePanels !== undefined &&
+      !lockDestinationPanel &&
+      !initialPanelOpen
+    ) {
       closeAllPanels();
     }
-  }, [closePanels]);
+  }, [closePanels, lockDestinationPanel, initialPanelOpen]);
 
   // 거리 계산 함수 (간단한 유클리드 거리)
   const calculateDistance = (area) => {
@@ -118,8 +98,8 @@ function NavigationUI({
   const sortedAreas = [...zooAreas]
     .filter((area) => area.id !== "main-gate")
     .filter((area) => {
-      if (localSelectedCategory && area.category !== localSelectedCategory) {
-        return false;
+      if (selectedCategory && selectedCategory.length > 0) {
+        return selectedCategory.includes(area.category);
       }
       return true;
     })
@@ -139,63 +119,6 @@ function NavigationUI({
 
   return (
     <div className="navigation-ui">
-      {/* 왼쪽 위 작은 메뉴 버튼 */}
-      <button
-        className="menu-toggle-btn"
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-      >
-        <span className="menu-icon">☰</span>
-      </button>
-
-      {/* 메뉴 패널 */}
-      {isMenuOpen && (
-        <div className="menu-panel">
-          {/* 목적지 선택 버튼 */}
-          <button
-            className="menu-item-btn"
-            onClick={() => setIsDestinationOpen(!isDestinationOpen)}
-          >
-            <span>
-              {selectedDestinations.length > 0
-                ? `🎯 ${selectedDestinations.length}개 선택됨`
-                : "🗺️ 목적지 선택"}
-            </span>
-            <span className="toggle-icon">{isDestinationOpen ? "▼" : "▶"}</span>
-          </button>
-
-          {/* 추천 경로 버튼 */}
-          {recommendedRoute && recommendedRoute.length > 0 && (
-            <button
-              className="menu-item-btn"
-              onClick={() => setIsRecommendationOpen(!isRecommendationOpen)}
-            >
-              <span>⭐ 추천 경로</span>
-              <span className="toggle-icon">
-                {isRecommendationOpen ? "▼" : "▶"}
-              </span>
-            </button>
-          )}
-
-          {/* 추천 영상 버튼 */}
-          <button
-            className="menu-item-btn"
-            onClick={() => setIsVideoOpen(!isVideoOpen)}
-          >
-            <span>🎬 추천 영상</span>
-            <span className="toggle-icon">{isVideoOpen ? "▼" : "▶"}</span>
-          </button>
-
-          {/* 범례 토글 버튼 */}
-          <button
-            className="menu-item-btn"
-            onClick={() => setShowLegend(!showLegend)}
-          >
-            <span>🎨 범례</span>
-            <span className="toggle-icon">{showLegend ? "▼" : "▶"}</span>
-          </button>
-        </div>
-      )}
-
       {/* 목적지 선택 패널 */}
       {isDestinationOpen && (
         <>
@@ -214,50 +137,6 @@ function NavigationUI({
               <h3>목적지 선택</h3>
               <button className="close-btn" onClick={closeAllPanels}>
                 ✕
-              </button>
-            </div>
-
-            {/* 카테고리 필터 */}
-            <div className="category-filters">
-              <button
-                className={`category-filter-btn ${
-                  localSelectedCategory === null ? "active" : ""
-                }`}
-                onClick={() => setLocalSelectedCategory(null)}
-              >
-                전체
-              </button>
-              <button
-                className={`category-filter-btn ${
-                  localSelectedCategory === "ANIMAL" ? "active" : ""
-                }`}
-                onClick={() => setLocalSelectedCategory("ANIMAL")}
-              >
-                🐾 동물
-              </button>
-              <button
-                className={`category-filter-btn ${
-                  localSelectedCategory === "FUN" ? "active" : ""
-                }`}
-                onClick={() => setLocalSelectedCategory("FUN")}
-              >
-                🎪 재미나라
-              </button>
-              <button
-                className={`category-filter-btn ${
-                  localSelectedCategory === "FACILITY" ? "active" : ""
-                }`}
-                onClick={() => setLocalSelectedCategory("FACILITY")}
-              >
-                🏪 편의시설
-              </button>
-              <button
-                className={`category-filter-btn ${
-                  localSelectedCategory === "NATURE" ? "active" : ""
-                }`}
-                onClick={() => setLocalSelectedCategory("NATURE")}
-              >
-                🌿 자연나라
               </button>
             </div>
 
@@ -580,309 +459,6 @@ function NavigationUI({
             )}
           </div>
         </>
-      )}
-
-      {/* 추천 영상 패널 */}
-      {isVideoOpen && (
-        <>
-          {/* 배경 오버레이 */}
-          <div className="panel-overlay" onClick={closeAllPanels} />
-
-          <div className="video-panel">
-            {/* 헤더와 닫기 버튼 */}
-            <div className="panel-header">
-              <h3>🎬 추천 영상</h3>
-              <button className="close-btn" onClick={closeAllPanels}>
-                ✕
-              </button>
-            </div>
-
-            {/* 영상 목록 */}
-            <div className="video-list">
-              <div className="video-item">
-                <div
-                  className="video-thumbnail"
-                  onClick={() => playVideo("e3lNmhZaBmA")}
-                >
-                  <div className="video-play-button">▶</div>
-                  <img
-                    src="https://img.youtube.com/vi/e3lNmhZaBmA/maxresdefault.jpg"
-                    alt="추천 영상 썸네일"
-                    className="thumbnail-image"
-                  />
-                </div>
-                <div className="video-info">
-                  <h4 className="video-title">동물원 체험 가이드</h4>
-                  <p className="video-description">
-                    동물원에서 즐기는 특별한 체험과 팁을 소개합니다
-                  </p>
-                  <div className="video-meta">
-                    <span className="video-duration">0:45</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 추가 영상들 */}
-            <div className="additional-videos">
-              <h4>관련 영상</h4>
-              <div className="video-grid">
-                <div
-                  className="mini-video-item"
-                  onClick={() => playVideo("e3lNmhZaBmA")}
-                >
-                  <div className="mini-thumbnail">
-                    <img
-                      src="https://img.youtube.com/vi/e3lNmhZaBmA/mqdefault.jpg"
-                      alt="관련 영상 1"
-                    />
-                    <div className="mini-play-button">▶</div>
-                  </div>
-                  <div className="mini-video-info">
-                    <span className="mini-title">동물원 투어 팁</span>
-                    <span className="mini-duration">3:45</span>
-                  </div>
-                </div>
-                <div
-                  className="mini-video-item"
-                  onClick={() => playVideo("e3lNmhZaBmA")}
-                >
-                  <div className="mini-thumbnail">
-                    <img
-                      src="https://img.youtube.com/vi/e3lNmhZaBmA/mqdefault.jpg"
-                      alt="관련 영상 2"
-                    />
-                    <div className="mini-play-button">▶</div>
-                  </div>
-                  <div className="mini-video-info">
-                    <span className="mini-title">가족 동물원 여행</span>
-                    <span className="mini-duration">7:20</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* 범례 */}
-      {showLegend && (
-        <div
-          className="video-modal-overlay"
-          onClick={() => setShowLegend(false)}
-        >
-          <div
-            className="video-modal legend-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="video-modal-header">
-              <h3>🎨 범례</h3>
-              <button
-                className="video-close-btn"
-                onClick={() => setShowLegend(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="legend-modal-content">
-              <h4>
-                카테고리
-                {selectedCategory && selectedCategory.length > 0 && (
-                  <>
-                    <span className="filter-count">
-                      {selectedCategory.length}개 선택
-                    </span>
-                    <button
-                      className="clear-filter-btn"
-                      onClick={clearAllFilters}
-                    >
-                      전체 보기
-                    </button>
-                  </>
-                )}
-              </h4>
-              {selectedCategory && selectedCategory.length > 0 && (
-                <p className="filter-hint">
-                  💡 여러 카테고리를 선택할 수 있어요
-                </p>
-              )}
-              <div className="legend-items">
-                <div
-                  className={`legend-item legend-item-clickable ${
-                    selectedCategory && selectedCategory.includes("GATE")
-                      ? "legend-item-selected"
-                      : ""
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCategoryClick("GATE");
-                  }}
-                >
-                  <div
-                    className="legend-color"
-                    style={{ backgroundColor: categoryColors.GATE }}
-                  />
-                  <span>문</span>
-                  {selectedCategory && selectedCategory.includes("GATE") && (
-                    <span className="selected-check">✓</span>
-                  )}
-                </div>
-                <div
-                  className={`legend-item legend-item-clickable ${
-                    selectedCategory && selectedCategory.includes("ANIMAL")
-                      ? "legend-item-selected"
-                      : ""
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCategoryClick("ANIMAL");
-                  }}
-                >
-                  <div
-                    className="legend-color"
-                    style={{ backgroundColor: categoryColors.ANIMAL }}
-                  />
-                  <span>동물</span>
-                  {selectedCategory && selectedCategory.includes("ANIMAL") && (
-                    <span className="selected-check">✓</span>
-                  )}
-                </div>
-                <div
-                  className={`legend-item legend-item-clickable ${
-                    selectedCategory && selectedCategory.includes("FUN")
-                      ? "legend-item-selected"
-                      : ""
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCategoryClick("FUN");
-                  }}
-                >
-                  <div
-                    className="legend-color"
-                    style={{ backgroundColor: categoryColors.FUN }}
-                  />
-                  <span>재미나라</span>
-                  {selectedCategory && selectedCategory.includes("FUN") && (
-                    <span className="selected-check">✓</span>
-                  )}
-                </div>
-                <div
-                  className={`legend-item legend-item-clickable ${
-                    selectedCategory && selectedCategory.includes("FACILITY")
-                      ? "legend-item-selected"
-                      : ""
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCategoryClick("FACILITY");
-                  }}
-                >
-                  <div
-                    className="legend-color"
-                    style={{ backgroundColor: categoryColors.FACILITY }}
-                  />
-                  <span>편의시설</span>
-                  {selectedCategory &&
-                    selectedCategory.includes("FACILITY") && (
-                      <span className="selected-check">✓</span>
-                    )}
-                </div>
-                <div
-                  className={`legend-item legend-item-clickable ${
-                    selectedCategory && selectedCategory.includes("NATURE")
-                      ? "legend-item-selected"
-                      : ""
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCategoryClick("NATURE");
-                  }}
-                >
-                  <div
-                    className="legend-color"
-                    style={{ backgroundColor: categoryColors.NATURE }}
-                  />
-                  <span>자연나라</span>
-                  {selectedCategory && selectedCategory.includes("NATURE") && (
-                    <span className="selected-check">✓</span>
-                  )}
-                </div>
-              </div>
-
-              <h4 style={{ marginTop: "12px" }}>혼잡도</h4>
-              <div className="legend-items">
-                <div className="legend-item">
-                  <div
-                    className="legend-color"
-                    style={{ backgroundColor: "#4CAF50" }}
-                  />
-                  <span>여유</span>
-                </div>
-                <div className="legend-item">
-                  <div
-                    className="legend-color"
-                    style={{ backgroundColor: "#FFC107" }}
-                  />
-                  <span>보통</span>
-                </div>
-                <div className="legend-item">
-                  <div
-                    className="legend-color"
-                    style={{ backgroundColor: "#FF9800" }}
-                  />
-                  <span>혼잡</span>
-                </div>
-                <div className="legend-item">
-                  <div
-                    className="legend-color"
-                    style={{ backgroundColor: "#F44336" }}
-                  />
-                  <span>매우 혼잡</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 영상 재생 모달 */}
-      {showVideoModal && (
-        <div
-          className="video-modal-overlay"
-          onClick={() => setShowVideoModal(false)}
-        >
-          <div className="video-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="video-modal-header">
-              <h3>🎬 영상 재생</h3>
-              <button
-                className="video-close-btn"
-                onClick={() => setShowVideoModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="video-player-container">
-              <iframe
-                width="100%"
-                height="315"
-                src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&rel=0`}
-                title="YouTube video player"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              ></iframe>
-            </div>
-            <div className="video-modal-footer">
-              <button
-                className="btn-secondary"
-                onClick={() => setShowVideoModal(false)}
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* 초기화 확인 모달 */}
