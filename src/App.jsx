@@ -5,6 +5,8 @@ import MapView from "./components/MapView";
 import NavigationUI from "./components/NavigationUI";
 import CompactDirectionOverlay from "./components/CompactDirectionOverlay";
 import CameraView from "./components/CameraView";
+import SplashScreen from "./components/SplashScreen";
+import IntroScreen from "./components/IntroScreen";
 import {
   findOptimalPath,
   currentLocation,
@@ -16,6 +18,8 @@ import {
 import "./App.css";
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [showIntro, setShowIntro] = useState(true);
   const [selectedDestinations, setSelectedDestinations] = useState([]);
   const [currentPath, setCurrentPath] = useState(null);
   const [firstPersonMode, setFirstPersonMode] = useState(false);
@@ -37,6 +41,29 @@ function App() {
   const firstPersonModeRef = useRef(firstPersonMode);
   const userPositionRef = useRef(userPosition);
   const lastMoveTime = useRef(0);
+
+  // 스플래시 화면 타이머
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 인트로 화면 시작 핸들러
+  const handleIntroStart = useCallback((mode) => {
+    setShowIntro(false);
+    if (mode === "map") {
+      setFirstPersonMode(false);
+    } else if (mode === "list") {
+      setFirstPersonMode(false);
+      // 목록 모드로 시작 (기본 동작과 동일)
+    } else {
+      // 'main' - 목적지 선택 (기본 동작)
+      setFirstPersonMode(false);
+    }
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -350,6 +377,16 @@ function App() {
       window.removeEventListener("mousedown", handlePointerStart);
     };
   }, []);
+
+  // 스플래시 화면 보여주기
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
+  // 인트로 화면 보여주기
+  if (showIntro) {
+    return <IntroScreen onStart={handleIntroStart} />;
+  }
 
   return (
     <div className="app">
