@@ -437,7 +437,7 @@ function MapView({
 
     // 나무늘보 레이어 (동쪽으로 5미터)
     const slothLayer = create3DLayer(
-      "/src/image/3d/sloth.glb",
+      new URL("../image/3d/sloth.glb", import.meta.url).href,
       "3d-model-sloth",
       0.00005,
       0,
@@ -446,7 +446,7 @@ function MapView({
 
     // 미어캣 레이어 (서쪽으로 5미터)
     const meerkatLayer = create3DLayer(
-      "/src/image/3d/meerkat.glb",
+      new URL("../image/3d/meerkat.glb", import.meta.url).href,
       "3d-model-meerkat",
       -0.00005,
       0,
