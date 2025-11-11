@@ -9,6 +9,8 @@ import {
   getCongestionColor,
   calculateBearing,
 } from "../data/mockData";
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -118,6 +120,7 @@ function MapView({
     map.current.on("load", () => {
       addMarkers();
       addRoute();
+      add3DModel();
     });
 
     const canvas = map.current.getCanvas();
@@ -314,6 +317,157 @@ function MapView({
       },
     });
   }, [currentPath]);
+
+  const add3DModel = () => {
+    if (!map.current) return;
+
+    // 3D 모델 생성 헬퍼 함수
+    const create3DLayer = (
+      modelPath,
+      layerId,
+      longitudeOffset,
+      latitudeOffset,
+      scaleMultiplier = 5
+    ) => {
+      const modelOrigin = [
+        userPosition.longitude + longitudeOffset,
+        userPosition.latitude + latitudeOffset,
+      ];
+      const modelAltitude = 0;
+      const modelRotate = [Math.PI / 2, 0, 0];
+
+      const modelAsMercatorCoordinate = mapboxgl.MercatorCoordinate.fromLngLat(
+        modelOrigin,
+        modelAltitude
+      );
+
+      const modelTransform = {
+        translateX: modelAsMercatorCoordinate.x,
+        translateY: modelAsMercatorCoordinate.y,
+        translateZ: modelAsMercatorCoordinate.z,
+        rotateX: modelRotate[0],
+        rotateY: modelRotate[1],
+        rotateZ: modelRotate[2],
+        scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits(),
+      };
+
+      return {
+        id: layerId,
+        type: "custom",
+        renderingMode: "3d",
+        onAdd: function (map, gl) {
+          this.camera = new THREE.Camera();
+          this.scene = new THREE.Scene();
+
+          // 조명 추가
+          const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+          directionalLight.position.set(0, 70, 100).normalize();
+          this.scene.add(directionalLight);
+
+          const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+          this.scene.add(ambientLight);
+
+          // GLTF 로더로 모델 로드
+          const loader = new GLTFLoader();
+          loader.load(
+            modelPath,
+            (gltf) => {
+              this.model = gltf.scene;
+              this.scene.add(this.model);
+              map.triggerRepaint();
+            },
+            undefined,
+            (error) => {
+              console.error(`3D 모델 로딩 오류 (${modelPath}):`, error);
+            }
+          );
+
+          this.map = map;
+
+          // Three.js 렌더러 설정
+          this.renderer = new THREE.WebGLRenderer({
+            canvas: map.getCanvas(),
+            context: gl,
+            antialias: true,
+          });
+
+          this.renderer.autoClear = false;
+        },
+        render: function (gl, matrix) {
+          if (!this.model) return;
+
+          const rotationX = new THREE.Matrix4().makeRotationAxis(
+            new THREE.Vector3(1, 0, 0),
+            modelTransform.rotateX
+          );
+          const rotationY = new THREE.Matrix4().makeRotationAxis(
+            new THREE.Vector3(0, 1, 0),
+            modelTransform.rotateY
+          );
+          const rotationZ = new THREE.Matrix4().makeRotationAxis(
+            new THREE.Vector3(0, 0, 1),
+            modelTransform.rotateZ
+          );
+
+          const m = new THREE.Matrix4().fromArray(matrix);
+          const l = new THREE.Matrix4()
+            .makeTranslation(
+              modelTransform.translateX,
+              modelTransform.translateY,
+              modelTransform.translateZ
+            )
+            .scale(
+              new THREE.Vector3(
+                modelTransform.scale * scaleMultiplier,
+                -modelTransform.scale * scaleMultiplier,
+                modelTransform.scale * scaleMultiplier
+              )
+            )
+            .multiply(rotationX)
+            .multiply(rotationY)
+            .multiply(rotationZ);
+
+          this.camera.projectionMatrix = m.multiply(l);
+          this.renderer.resetState();
+          this.renderer.render(this.scene, this.camera);
+          this.map.triggerRepaint();
+        },
+      };
+    };
+
+    // 나무늘보 레이어 (동쪽으로 5미터)
+    const slothLayer = create3DLayer(
+      "/src/image/3d/sloth.glb",
+      "3d-model-sloth",
+      0.00005,
+      0,
+      5
+    );
+
+    // 미어캣 레이어 (서쪽으로 5미터)
+    const meerkatLayer = create3DLayer(
+      "/src/image/3d/meerkat.glb",
+      "3d-model-meerkat",
+      -0.00005,
+      0,
+      5
+    );
+
+    // 기존 레이어가 있으면 제거
+    if (map.current.getLayer("3d-model")) {
+      map.current.removeLayer("3d-model");
+    }
+    if (map.current.getLayer("3d-model-sloth")) {
+      map.current.removeLayer("3d-model-sloth");
+    }
+    if (map.current.getLayer("3d-model-meerkat")) {
+      map.current.removeLayer("3d-model-meerkat");
+    }
+
+    // 레이어 추가
+    map.current.addLayer(slothLayer);
+    map.current.addLayer(meerkatLayer);
+  };
 
   useEffect(() => {
     if (map.current) {
