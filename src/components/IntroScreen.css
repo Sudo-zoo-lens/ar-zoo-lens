@@ -5,6 +5,9 @@
   width: 100vw;
   height: 100vh;
   background: #ffffff;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -38,50 +41,46 @@
   color: #2d3748;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
-
 .intro-buttons {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 16px;
   width: 100%;
   max-width: 320px;
   margin-top: auto;
-  margin-bottom: 20px;
+  margin-bottom: 40px;
 }
 
 .intro-btn {
-  width: 100%;
-  padding: 16px 32px;
-  font-size: 18px;
-  font-weight: 600;
-  border: 3px solid #2d3748;
-  border-radius: 12px;
+  width: fit-content;
+  padding: 16px 8px;
+
+  font-size: 26px;
+  font-weight: 700;
+
+  border: 2px solid #222222;
+  border-radius: 16px;
+
   background: #ffffff;
-  color: #2d3748;
+  color: #222222;
+
   cursor: pointer;
+
   transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .intro-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .intro-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .main-btn {
-  background: #4a5568;
-  color: #ffffff;
-  border-color: #4a5568;
-}
-
-.main-btn:hover {
-  background: #2d3748;
-  border-color: #2d3748;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
 }
 
 .intro-character {
