@@ -102,7 +102,7 @@ canvas {
 /* 지도 모드 하단 중앙 카메라 버튼 */
 .enter-camera-btn {
   position: fixed;
-  bottom: 18px;
+  bottom: 120px;
   left: 50%;
   transform: translateX(-50%);
   padding: 12px 18px;
@@ -114,6 +114,285 @@ canvas {
   border-radius: 30px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
   z-index: 100;
+}
+
+/* 상단 경로 표시 바 */
+.map-top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 16px 20px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.route-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.route-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.route-chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.route-chip.current-location {
+  background: #f3f4f6;
+  color: #374151;
+  cursor: default;
+}
+
+.route-chip.destination {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.route-chip.destination:hover {
+  background: #bfdbfe;
+  transform: translateY(-1px);
+}
+
+.route-chip.destination:active {
+  transform: translateY(0);
+}
+
+.route-chip.explore-btn {
+  background: #2563eb;
+  color: white;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.route-chip.explore-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.route-chip.explore-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.route-chip.explore-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.route-arrow {
+  color: #9ca3af;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.route-hint {
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.route-limit {
+  font-size: 11px;
+  color: #ef4444;
+  text-align: right;
+}
+
+/* 홈으로 돌아가기 버튼 */
+.back-to-intro-btn {
+  position: fixed;
+  top: 85px;
+  left: 20px;
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  background: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.back-to-intro-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: #f5f5f5;
+}
+
+.back-to-intro-btn:active {
+  transform: translateY(0);
+}
+
+/* 지도 페이지 하단 흰색 배경 바 */
+.map-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 16px 20px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 99;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 지도 페이지 하단 액션 버튼들 */
+.map-action-buttons {
+  display: flex;
+  gap: 12px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0 10px;
+}
+
+.map-action-btn {
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e40af;
+  background: #dbeafe;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.2);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.map-action-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+  background: #bfdbfe;
+}
+
+.map-action-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.map-action-btn.primary {
+  background: #2563eb;
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.map-action-btn.primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.map-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+  .map-top-bar {
+    padding: 12px 16px 10px;
+  }
+
+  .route-chip {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .route-hint {
+    font-size: 11px;
+  }
+
+  .back-to-intro-btn {
+    top: 75px;
+    padding: 8px 14px;
+  }
+
+  .map-bottom-bar {
+    padding: 14px 16px;
+  }
+
+  .map-action-buttons {
+    gap: 8px;
+  }
+
+  .map-action-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .enter-camera-btn {
+    bottom: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-top-bar {
+    padding: 10px 12px 8px;
+  }
+
+  .route-chip {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .route-arrow {
+    font-size: 14px;
+  }
+
+  .route-hint {
+    font-size: 10px;
+  }
+
+  .route-limit {
+    font-size: 10px;
+  }
+
+  .back-to-intro-btn {
+    top: 70px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .map-bottom-bar {
+    padding: 12px;
+  }
+
+  .map-action-buttons {
+    gap: 6px;
+  }
+
+  .map-action-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .enter-camera-btn {
+    bottom: 90px;
+  }
 }
 
 @media (max-width: 480px) {

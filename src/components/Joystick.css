@@ -1,7 +1,7 @@
 /* 조이스틱 컨테이너 */
 .joystick-container {
   position: absolute;
-  bottom: 20px;
+  bottom: 120px;
   right: 20px;
   z-index: 100;
   pointer-events: auto;
@@ -108,7 +108,7 @@
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .joystick-container {
-    bottom: 15px;
+    bottom: 100px;
     right: 15px;
   }
 
@@ -125,7 +125,7 @@
 
 @media (max-width: 480px) {
   .joystick-container {
-    bottom: 10px;
+    bottom: 90px;
     right: 10px;
   }
 

@@ -102,13 +102,24 @@ function MapView({
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
+    // 모든 시설을 포함하는 경계 계산
+    const bounds = new mapboxgl.LngLatBounds();
+
+    // 사용자 위치 추가
+    bounds.extend([userPosition.longitude, userPosition.latitude]);
+
+    // 모든 동물원 시설 위치 추가
+    zooAreas.forEach((area) => {
+      bounds.extend([area.longitude, area.latitude]);
+    });
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
       center: [userPosition.longitude, userPosition.latitude],
-      zoom: 19.5,
-      pitch: 80,
-      bearing: 120,
+      zoom: 16.5,
+      pitch: 0, // 90도 수직 뷰 (0 = 완전히 위에서 내려다봄)
+      bearing: 0, // 북쪽을 위로
       antialias: true,
       projection: "globe",
     });
@@ -118,6 +129,14 @@ function MapView({
     }
 
     map.current.on("load", () => {
+      // 지도가 로드되면 모든 시설이 보이도록 bounds로 이동
+      map.current.fitBounds(bounds, {
+        padding: { top: 150, bottom: 200, left: 80, right: 80 },
+        pitch: 0,
+        bearing: 0,
+        duration: 0,
+      });
+
       addMarkers();
       addRoute();
       add3DModel();
@@ -147,7 +166,7 @@ function MapView({
       const dy = y - startY;
 
       const newBearing = startBearing - dx * 0.3;
-      const newPitch = clamp(startPitch + dy * 0.2, 0, 80);
+      const newPitch = clamp(startPitch + dy * 0.2, 0, 85);
 
       map.current.easeTo({
         bearing: newBearing,

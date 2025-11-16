@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import MapView from "./components/MapView";
 import NavigationUI from "./components/NavigationUI";
 import CompactDirectionOverlay from "./components/CompactDirectionOverlay";
@@ -12,12 +12,13 @@ import {
   recommendRoute,
   checkEventAttendance,
   gpsToPosition,
+  zooAreas,
 } from "./data/mockData";
 import "./App.css";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [showIntro, setShowIntro] = useState(true);
+  const [currentPage, setCurrentPage] = useState("intro"); // 'intro', 'map', 'list'
   const [initialPanelOpen, setInitialPanelOpen] = useState(false);
   const [selectedDestinations, setSelectedDestinations] = useState([]);
   const [currentPath, setCurrentPath] = useState(null);
@@ -52,14 +53,51 @@ function App() {
 
   // 인트로 화면 시작 핸들러
   const handleIntroStart = useCallback((mode) => {
-    setShowIntro(false);
     if (mode === "map") {
+      setCurrentPage("map");
       setFirstPersonMode(false);
       setInitialPanelOpen(false);
+      window.history.pushState({ page: "map" }, "", "/map");
     } else if (mode === "list") {
+      setCurrentPage("list");
       setFirstPersonMode(false);
-      setInitialPanelOpen(true); // 목록보기를 누르면 목적지 선택 패널 열기
+      setInitialPanelOpen(true);
+      window.history.pushState({ page: "list" }, "", "/list");
     }
+  }, []);
+
+  // 인트로로 돌아가기
+  const handleBackToIntro = useCallback(() => {
+    setCurrentPage("intro");
+    setInitialPanelOpen(false);
+    setSelectedDestinations([]);
+    setCurrentPath(null);
+    setFirstPersonMode(false);
+    window.history.pushState({ page: "intro" }, "", "/");
+  }, []);
+
+  // 브라우저 뒤로가기/앞으로가기 처리
+  useEffect(() => {
+    const handlePopState = (event) => {
+      if (event.state && event.state.page) {
+        setCurrentPage(event.state.page);
+        if (event.state.page === "intro") {
+          setInitialPanelOpen(false);
+          setSelectedDestinations([]);
+          setCurrentPath(null);
+          setFirstPersonMode(false);
+        } else if (event.state.page === "map") {
+          setFirstPersonMode(false);
+          setInitialPanelOpen(false);
+        } else if (event.state.page === "list") {
+          setFirstPersonMode(false);
+          setInitialPanelOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
@@ -386,12 +424,71 @@ function App() {
   }
 
   // 인트로 화면 보여주기
-  if (showIntro) {
+  if (currentPage === "intro") {
     return <IntroScreen onStart={handleIntroStart} />;
   }
 
+  // 선택된 목적지의 정보 가져오기
+  const getAreaInfo = (areaId) => {
+    return zooAreas.find((area) => area.id === areaId);
+  };
+
   return (
     <div className="app">
+      {/* 뒤로가기 버튼 - 지도/목록 페이지에서만 표시 */}
+      {!showSplash && currentPage !== "intro" && !firstPersonMode && (
+        <button className="back-to-intro-btn" onClick={handleBackToIntro}>
+          ← 홈으로
+        </button>
+      )}
+
+      {/* 상단 경로 표시 바 */}
+      {!firstPersonMode && !initialPanelOpen && (
+        <div className="map-top-bar">
+          <div className="route-chips">
+            <div className="route-chip current-location">내 위치</div>
+            {selectedDestinations.map((destId, index) => {
+              const area = getAreaInfo(destId);
+              return (
+                <React.Fragment key={destId}>
+                  <span className="route-arrow">→</span>
+                  <button
+                    className="route-chip destination"
+                    onClick={() => handleDestinationToggle(destId)}
+                  >
+                    {area?.name || destId}
+                  </button>
+                </React.Fragment>
+              );
+            })}
+            {selectedDestinations.length > 0 && (
+              <>
+                <span className="route-arrow">→</span>
+                <button
+                  className="route-chip explore-btn"
+                  onClick={() => {
+                    if (recommendedRoute && recommendedRoute.length > 0) {
+                      setShowTravelConfirmModal(true);
+                    }
+                  }}
+                  disabled={!recommendedRoute || recommendedRoute.length === 0}
+                >
+                  탐색
+                </button>
+              </>
+            )}
+          </div>
+          {selectedDestinations.length === 0 && (
+            <div className="route-hint">
+              지도에서 시설을 선택해주세요 (최대 5개)
+            </div>
+          )}
+          {selectedDestinations.length >= 5 && (
+            <div className="route-limit">※ 최대 5개 선택 가능</div>
+          )}
+        </div>
+      )}
+
       {firstPersonMode && (
         <>
           <CameraView
@@ -471,12 +568,55 @@ function App() {
       )}
 
       {!firstPersonMode && !initialPanelOpen && (
-        <button
-          className="enter-camera-btn"
-          onClick={() => setFirstPersonMode(true)}
-        >
-          📷 카메라
-        </button>
+        <>
+          <button
+            className="enter-camera-btn"
+            onClick={() => setFirstPersonMode(true)}
+          >
+            📷 카메라
+          </button>
+
+          {/* 지도 페이지 하단 흰색 바 */}
+          <div className="map-bottom-bar">
+            <div className="map-action-buttons">
+              <button
+                className="map-action-btn"
+                onClick={() => setInitialPanelOpen(true)}
+              >
+                전체 시설 보기
+              </button>
+              <button
+                className="map-action-btn primary"
+                onClick={() => {
+                  if (recommendedRoute && recommendedRoute.length > 0) {
+                    setShowTravelConfirmModal(true);
+                  }
+                }}
+                disabled={!recommendedRoute || recommendedRoute.length === 0}
+              >
+                이 경로대로 안내
+              </button>
+              <button
+                className="map-action-btn"
+                onClick={() => {
+                  if (selectedDestinations.length > 0) {
+                    setCongestionUpdate((prev) => prev + 1);
+                    const newRecommendations = recommendRoute(
+                      selectedDestinations,
+                      userPosition,
+                      attendingEvents,
+                      forcedRecommendations
+                    );
+                    setRecommendedRoute(newRecommendations);
+                  }
+                }}
+                disabled={selectedDestinations.length === 0}
+              >
+                혼잡도 기반 재탐색
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {showEventModal && (
