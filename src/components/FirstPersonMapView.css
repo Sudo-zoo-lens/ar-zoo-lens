@@ -9,6 +9,13 @@
   height: 100%;
 }
 
+.mapbox-map.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* 내비게이션 정보 패널 (상단) */
 .navigation-info-panel-top {
   position: fixed;
@@ -634,4 +641,108 @@
     font-size: 10px;
     padding: 3px 8px;
   }
+}
+
+/* 카메라 버튼 */
+.camera-toggle-btn {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(33, 150, 243, 0.9),
+    rgba(25, 118, 210, 0.9)
+  );
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.4);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  z-index: 1000;
+}
+
+.camera-toggle-btn:hover {
+  transform: translateX(-50%) scale(1.1);
+  background: linear-gradient(
+    135deg,
+    rgba(33, 150, 243, 1),
+    rgba(25, 118, 210, 1)
+  );
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.6);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.camera-close-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  z-index: 1001;
+  backdrop-filter: blur(10px);
+}
+
+.camera-close-btn:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.9);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* 사진 찍기 버튼 */
+.camera-capture-btn {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(240, 240, 240, 0.95)
+  );
+  color: #333;
+  font-size: 32px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(255, 255, 255, 0.3);
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  z-index: 1002;
+  backdrop-filter: blur(10px);
+}
+
+.camera-capture-btn:hover {
+  transform: translateX(-50%) scale(1.05);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4), 0 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+.camera-capture-btn:active {
+  transform: translateX(-50%) scale(0.95);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(255, 255, 255, 0.3);
 }

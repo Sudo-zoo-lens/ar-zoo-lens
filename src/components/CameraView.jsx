@@ -10,8 +10,10 @@ function CameraView({
   onAreaSelect,
   congestionUpdate,
   categoryFilter,
+  videoRef: externalVideoRef,
 }) {
-  const videoRef = useRef(null);
+  const internalVideoRef = useRef(null);
+  const videoRef = externalVideoRef || internalVideoRef;
   const [hasCamera, setHasCamera] = useState(false);
   const [error, setError] = useState(null);
   const streamRef = useRef(null);

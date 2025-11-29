@@ -3,6 +3,8 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./FirstPersonMapView.css";
 import Joystick from "./Joystick";
+import CameraView from "./CameraView";
+import AR3DModels from "./AR3DModels";
 import {
   zooAreas,
   calculateDistance,
@@ -46,6 +48,9 @@ function FirstPersonMapView({
   const [showArrivalModal, setShowArrivalModal] = useState(false);
   const arrivalModalShownRef = useRef(false);
   const arrivalTimerRef = useRef(null);
+  const [cameraMode, setCameraMode] = useState(false);
+  const videoRef = useRef(null);
+  const arRendererRef = useRef(null);
 
   // activeRouteIndex가 변경되면 도착 모달 플래그 리셋 (단, 타이머 실행 중이 아닐 때만)
   useEffect(() => {
@@ -382,6 +387,9 @@ function FirstPersonMapView({
 
     if (!map.current) return;
 
+    // 카메라 모드일 때는 마커를 표시하지 않음
+    if (cameraMode) return;
+
     // 경로에 포함된 장소들만 표시
     if (currentPath && currentPath.areas) {
       currentPath.areas.forEach((area, index) => {
@@ -432,13 +440,46 @@ function FirstPersonMapView({
         markers.current.push(marker);
       });
     }
-  }, [userPosition, currentPath]);
+  }, [userPosition, currentPath, cameraMode]);
 
   useEffect(() => {
     if (map.current) {
       addMarkers();
     }
   }, [addMarkers]);
+
+  // 카메라 모드 변경 시 마커 업데이트
+  useEffect(() => {
+    // 카메라 모드일 때는 모든 마커 제거
+    if (cameraMode) {
+      markers.current.forEach((marker) => {
+        try {
+          marker.remove();
+        } catch (e) {
+          console.warn("마커 제거 중 오류:", e);
+        }
+      });
+      markers.current = [];
+
+      // 지도 컨테이너의 모든 마커 요소도 제거
+      if (mapContainer.current) {
+        const markerElements =
+          mapContainer.current.querySelectorAll(".mapboxgl-marker");
+        markerElements.forEach((el) => {
+          try {
+            el.remove();
+          } catch (e) {
+            console.warn("마커 요소 제거 중 오류:", e);
+          }
+        });
+      }
+    } else {
+      // 카메라 모드가 꺼지면 마커 다시 추가
+      if (map.current) {
+        addMarkers();
+      }
+    }
+  }, [cameraMode, addMarkers]);
 
   const addRoute = useCallback(() => {
     if (!currentPath || !map.current) return;
@@ -491,9 +532,10 @@ function FirstPersonMapView({
     const create3DLayer = (
       modelPath,
       layerId,
-      longitudeOffset,
-      latitudeOffset,
-      scaleMultiplier = 5
+      longitude,
+      latitude,
+      scaleMultiplier = 5,
+      useAbsolutePosition = true
     ) => {
       const modelAltitude = 0;
       const modelRotate = [Math.PI / 2, 0, 0];
@@ -528,6 +570,9 @@ function FirstPersonMapView({
           );
 
           this.map = map;
+          this.longitude = longitude;
+          this.latitude = latitude;
+          this.useAbsolutePosition = useAbsolutePosition;
 
           this.renderer = new THREE.WebGLRenderer({
             canvas: map.getCanvas(),
@@ -540,12 +585,17 @@ function FirstPersonMapView({
         render: function (gl, matrix) {
           if (!this.model) return;
 
-          // 매 프레임 현재 캐릭터 위치를 계산
-          const currentCharPos = characterPositionRef.current;
-          const modelOrigin = [
-            currentCharPos.longitude + longitudeOffset,
-            currentCharPos.latitude + latitudeOffset,
-          ];
+          // 절대 위치 사용 여부에 따라 위치 계산
+          let modelOrigin;
+          if (this.useAbsolutePosition) {
+            modelOrigin = [this.longitude, this.latitude];
+          } else {
+            const currentCharPos = characterPositionRef.current;
+            modelOrigin = [
+              currentCharPos.longitude + this.longitude,
+              currentCharPos.latitude + this.latitude,
+            ];
+          }
 
           const modelAsMercatorCoordinate =
             mapboxgl.MercatorCoordinate.fromLngLat(modelOrigin, modelAltitude);
@@ -599,31 +649,124 @@ function FirstPersonMapView({
       };
     };
 
-    // nubie 캐릭터 레이어 - 정문 위치에 배치
-    const mainGate = zooAreas.find((area) => area.id === "main-gate");
-    const nubieLayer = create3DLayer(
-      new URL("../image/3d/nubie.glb", import.meta.url).href,
+    // 기존 레이어 제거
+    const layerIds = [
+      "3d-model",
       "3d-model-nubie",
-      0,
-      0,
-      5
+      "3d-model-sloth",
+      "3d-model-meerkat",
+      "3d-model-camel",
+      "3d-model-dolphin",
+      "3d-model-green-dinosaur",
+      "3d-model-orange-dinosaur",
+      "3d-model-main-gate",
+      "3d-model-musical-fountain",
+      "3d-model-ocean-museum",
+      "3d-model-tropical-museum",
+      "3d-model-palgakjeong",
+    ];
+
+    layerIds.forEach((layerId) => {
+      if (map.current.getLayer(layerId)) {
+        map.current.removeLayer(layerId);
+      }
+    });
+
+    // 정문 위치 가져오기
+    const mainGate = zooAreas.find((area) => area.id === "main-gate");
+    if (!mainGate) return;
+
+    // 정문 모델 - 정문 위치에 배치
+    const mainGateLayer = create3DLayer(
+      new URL("../image/3d/main-gate.glb", import.meta.url).href,
+      "3d-model-main-gate",
+      mainGate.longitude,
+      mainGate.latitude,
+      5,
+      true // 절대 위치 사용
     );
+    map.current.addLayer(mainGateLayer);
 
-    // 기존 레이어가 있으면 제거
-    if (map.current.getLayer("3d-model")) {
-      map.current.removeLayer("3d-model");
-    }
-    if (map.current.getLayer("3d-model-sloth")) {
-      map.current.removeLayer("3d-model-sloth");
-    }
-    if (map.current.getLayer("3d-model-meerkat")) {
-      map.current.removeLayer("3d-model-meerkat");
-    }
-    if (map.current.getLayer("3d-model-nubie")) {
-      map.current.removeLayer("3d-model-nubie");
+    // 음악분수 모델
+    const musicFountain = zooAreas.find((area) => area.id === "music-fountain");
+    if (musicFountain) {
+      const musicFountainLayer = create3DLayer(
+        new URL("../image/3d/musical-fountain.glb", import.meta.url).href,
+        "3d-model-musical-fountain",
+        musicFountain.longitude,
+        musicFountain.latitude,
+        5,
+        true
+      );
+      map.current.addLayer(musicFountainLayer);
     }
 
-    map.current.addLayer(nubieLayer);
+    // 바다동물관 모델
+    const seaAnimals = zooAreas.find((area) => area.id === "sea-animals");
+    if (seaAnimals) {
+      const seaAnimalsLayer = create3DLayer(
+        new URL("../image/3d/Ocean-Animal-Museum.glb", import.meta.url).href,
+        "3d-model-ocean-museum",
+        seaAnimals.longitude,
+        seaAnimals.latitude,
+        5,
+        true
+      );
+      map.current.addLayer(seaAnimalsLayer);
+    }
+
+    // 열대동물관 모델
+    const tropicalAnimals = zooAreas.find(
+      (area) => area.id === "tropical-animals"
+    );
+    if (tropicalAnimals) {
+      const tropicalAnimalsLayer = create3DLayer(
+        new URL("../image/3d/Tropical-Animal-Museum.glb", import.meta.url).href,
+        "3d-model-tropical-museum",
+        tropicalAnimals.longitude,
+        tropicalAnimals.latitude,
+        5,
+        true
+      );
+      map.current.addLayer(tropicalAnimalsLayer);
+    }
+
+    // 팔각당 모델
+    const octagon = zooAreas.find((area) => area.id === "octagon");
+    if (octagon) {
+      const octagonLayer = create3DLayer(
+        new URL("../image/3d/palgakjeong.glb", import.meta.url).href,
+        "3d-model-palgakjeong",
+        octagon.longitude,
+        octagon.latitude,
+        5,
+        true
+      );
+      map.current.addLayer(octagonLayer);
+    }
+
+    // 동물 모델들을 정문 근처에 배치 (정문 위치 기준으로 작은 오프셋)
+    const animalOffsets = [
+      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001 },
+      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001 },
+      { name: "green-dinosaur", offsetLng: 0.0001, offsetLat: -0.0001 },
+      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001 },
+      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0 },
+      { name: "sloth", offsetLng: -0.00015, offsetLat: 0 },
+      { name: "nubie", offsetLng: 0, offsetLat: 0.00015 },
+    ];
+
+    animalOffsets.forEach((animal) => {
+      const animalLayer = create3DLayer(
+        new URL(`../image/3d/${animal.name}.glb`, import.meta.url).href,
+        `3d-model-${animal.name}`,
+        mainGate.longitude + animal.offsetLng,
+        mainGate.latitude + animal.offsetLat,
+        5,
+        true
+      );
+      map.current.addLayer(animalLayer);
+    });
   };
 
   useEffect(() => {
@@ -714,6 +857,24 @@ function FirstPersonMapView({
           </div>
         )}
 
+      {/* 카메라 모드 */}
+      {cameraMode && (
+        <CameraView
+          isActive={cameraMode}
+          showAR={false}
+          userPosition={characterPosition}
+          videoRef={videoRef}
+        >
+          <AR3DModels
+            userPosition={characterPosition}
+            characterPosition={characterPosition}
+            onRendererReady={(renderer) => {
+              arRendererRef.current = renderer;
+            }}
+          />
+        </CameraView>
+      )}
+
       {/* 내비게이션 정보 패널 */}
       <div className="navigation-info-panel-top">
         <button
@@ -759,9 +920,91 @@ function FirstPersonMapView({
         )}
       </div>
 
-      <div ref={mapContainer} className="mapbox-map" />
+      {/* 카메라 버튼 */}
+      {!cameraMode && (
+        <button
+          className="camera-toggle-btn"
+          onClick={() => setCameraMode(true)}
+          title="카메라 켜기"
+        >
+          📷
+        </button>
+      )}
 
-      <Joystick onMove={handleJoystickMove} />
+      {/* 카메라 모드일 때 닫기 버튼 */}
+      {cameraMode && (
+        <button
+          className="camera-close-btn"
+          onClick={() => setCameraMode(false)}
+          title="카메라 끄기"
+        >
+          ✕
+        </button>
+      )}
+
+      {/* 카메라 모드일 때 사진 찍기 버튼 */}
+      {cameraMode && (
+        <button
+          className="camera-capture-btn"
+          onClick={() => {
+            if (!videoRef.current || !arRendererRef.current) return;
+
+            const video = videoRef.current;
+            const canvas = arRendererRef.current.domElement;
+
+            // 합성할 canvas 생성
+            const captureCanvas = document.createElement("canvas");
+            captureCanvas.width = video.videoWidth || window.innerWidth;
+            captureCanvas.height = video.videoHeight || window.innerHeight;
+            const ctx = captureCanvas.getContext("2d");
+
+            // 비디오 프레임 그리기
+            ctx.drawImage(
+              video,
+              0,
+              0,
+              captureCanvas.width,
+              captureCanvas.height
+            );
+
+            // 3D 모델 canvas 그리기 (투명도 유지)
+            if (canvas) {
+              ctx.drawImage(
+                canvas,
+                0,
+                0,
+                captureCanvas.width,
+                captureCanvas.height
+              );
+            }
+
+            // 다운로드
+            captureCanvas.toBlob((blob) => {
+              if (blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `ar-photo-${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }
+            }, "image/png");
+          }}
+          title="사진 찍기"
+        >
+          📷
+        </button>
+      )}
+
+      <div
+        ref={mapContainer}
+        className={`mapbox-map ${cameraMode ? "hidden" : ""}`}
+        style={cameraMode ? { display: "none" } : {}}
+      />
+
+      {!cameraMode && <Joystick onMove={handleJoystickMove} />}
     </div>
   );
 }

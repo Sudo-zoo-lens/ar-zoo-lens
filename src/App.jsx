@@ -43,6 +43,7 @@ function App() {
   const userPositionRef = useRef(userPosition);
   const lastMoveTime = useRef(0);
   const savedUserPositionRef = useRef(null); // navigation 시작 전 위치 저장
+  const originalRecommendedRouteRef = useRef(null); // 원본 경로 저장 (혼잡도 재탐색 취소 시 복원용)
 
   // 스플래시 화면 타이머
   useEffect(() => {
@@ -88,7 +89,8 @@ function App() {
     }
     setCurrentPage("map");
     setIsNavigating(false);
-    setCurrentPath(null);
+    // currentPath와 recommendedRoute는 유지 (다시 안내할 때 동일한 경로 사용)
+    // setCurrentPath(null); // 제거: 경로를 유지하여 다시 안내할 수 있도록 함
     window.history.pushState({ page: "map" }, "", "/map");
   }, []);
 
@@ -245,16 +247,61 @@ function App() {
 
   useEffect(() => {
     if (selectedDestinations.length > 0) {
+      // 로컬 스토리지에서 원본 경로 확인 (혼잡도 재탐색 취소 후 복원용)
+      let savedOriginalRoute = null;
+      try {
+        const savedRoute = localStorage.getItem("originalRecommendedRoute");
+        if (savedRoute) {
+          savedOriginalRoute = JSON.parse(savedRoute);
+        }
+      } catch (e) {
+        console.error("로컬 스토리지 읽기 실패:", e);
+      }
+
       const recommendations = recommendRoute(
         selectedDestinations,
         userPosition,
         attendingEvents,
         forcedRecommendations
       );
+
+      // 원본 경로가 있고, 선택된 목적지가 동일하면 원본 경로 사용
+      // (혼잡도 재탐색 취소 후 "이 경로대로 안내" 버튼을 누른 경우)
+      if (
+        savedOriginalRoute &&
+        savedOriginalRoute.length > 0 &&
+        recommendations &&
+        recommendations.length > 0
+      ) {
+        // 선택된 목적지 ID가 동일한지 확인
+        const savedIds = new Set(savedOriginalRoute.map((r) => r.id).sort());
+        const newIds = new Set(recommendations.map((r) => r.id).sort());
+        if (
+          savedIds.size === newIds.size &&
+          [...savedIds].every((id) => newIds.has(id))
+        ) {
+          // 동일한 목적지이면 원본 경로 사용
+          setRecommendedRoute(savedOriginalRoute);
+          originalRecommendedRouteRef.current = savedOriginalRoute;
+          return;
+        }
+      }
+
       setRecommendedRoute(recommendations);
+      // 새로운 경로가 계산되면 원본 경로도 업데이트
+      if (recommendations) {
+        originalRecommendedRouteRef.current = recommendations;
+      }
     } else {
       setRecommendedRoute(null);
       setCurrentPath(null);
+      // 선택된 목적지가 없으면 원본 경로도 초기화
+      try {
+        localStorage.removeItem("originalRecommendedRoute");
+      } catch (e) {
+        console.error("로컬 스토리지 삭제 실패:", e);
+      }
+      originalRecommendedRouteRef.current = null;
     }
   }, [
     selectedDestinations,
@@ -692,6 +739,17 @@ function App() {
                   className="map-action-btn primary"
                   onClick={() => {
                     if (recommendedRoute && recommendedRoute.length > 0) {
+                      // 원본 경로를 로컬 스토리지에 저장 (혼잡도 재탐색 취소 시 복원용)
+                      try {
+                        localStorage.setItem(
+                          "originalRecommendedRoute",
+                          JSON.stringify(recommendedRoute)
+                        );
+                        originalRecommendedRouteRef.current = recommendedRoute;
+                      } catch (e) {
+                        console.error("로컬 스토리지 저장 실패:", e);
+                        originalRecommendedRouteRef.current = recommendedRoute;
+                      }
                       setShowTravelConfirmModal(true);
                     }
                   }}
@@ -703,6 +761,21 @@ function App() {
                   className="map-action-btn"
                   onClick={() => {
                     if (selectedDestinations.length > 0) {
+                      // 현재 경로를 원본으로 백업 (취소 시 복원용)
+                      if (recommendedRoute && recommendedRoute.length > 0) {
+                        try {
+                          localStorage.setItem(
+                            "originalRecommendedRoute",
+                            JSON.stringify(recommendedRoute)
+                          );
+                          originalRecommendedRouteRef.current =
+                            recommendedRoute;
+                        } catch (e) {
+                          console.error("로컬 스토리지 저장 실패:", e);
+                          originalRecommendedRouteRef.current =
+                            recommendedRoute;
+                        }
+                      }
                       setCongestionUpdate((prev) => prev + 1);
                       const newRecommendations = recommendRoute(
                         selectedDestinations,
@@ -711,6 +784,12 @@ function App() {
                         forcedRecommendations
                       );
                       setRecommendedRoute(newRecommendations);
+                      // 혼잡도 기반 재탐색 시 기존 경로 초기화 (새로운 경로 계산을 위해)
+                      setCurrentPath(null);
+                      // 새로 계산된 경로로 확인 모달 표시
+                      if (newRecommendations && newRecommendations.length > 0) {
+                        setShowTravelConfirmModal(true);
+                      }
                     }
                   }}
                   disabled={selectedDestinations.length === 0}
@@ -828,7 +907,27 @@ function App() {
             <div className="modal-buttons">
               <button
                 className="btn-secondary"
-                onClick={() => setShowTravelConfirmModal(null)}
+                onClick={() => {
+                  // 취소 시 원본 경로로 복원
+                  try {
+                    const savedRoute = localStorage.getItem(
+                      "originalRecommendedRoute"
+                    );
+                    if (savedRoute) {
+                      const originalRoute = JSON.parse(savedRoute);
+                      setRecommendedRoute(originalRoute);
+                      originalRecommendedRouteRef.current = originalRoute;
+                    } else if (originalRecommendedRouteRef.current) {
+                      setRecommendedRoute(originalRecommendedRouteRef.current);
+                    }
+                  } catch (e) {
+                    console.error("로컬 스토리지 복원 실패:", e);
+                    if (originalRecommendedRouteRef.current) {
+                      setRecommendedRoute(originalRecommendedRouteRef.current);
+                    }
+                  }
+                  setShowTravelConfirmModal(null);
+                }}
               >
                 취소
               </button>
@@ -836,8 +935,14 @@ function App() {
                 className="btn-primary"
                 onClick={() => {
                   if (recommendedRoute && recommendedRoute.length > 0) {
+                    // 사용자가 선택한 목적지 ID 집합
+                    // selectedDestinations는 ID 배열이므로 직접 Set으로 변환
+                    const selectedIds = new Set(selectedDestinations);
+                    // 추천 가능한 목적지 또는 사용자가 선택한 목적지 포함
+                    // selectedDestinations에 포함된 목적지는 항상 포함 (사용자가 명시적으로 선택했으므로)
                     const validRoute = recommendedRoute.filter(
                       (dest) =>
+                        selectedIds.has(dest.id) ||
                         dest.recommended !== false ||
                         forcedRecommendations.has(dest.id)
                     );
@@ -851,37 +956,59 @@ function App() {
                     setIsNavigating(true);
                     setActiveRouteIndex(0);
                     setRecommendedRoute(validRoute);
-                    const firstDest = validRoute[0];
 
-                    const path = findOptimalPath(
-                      "main-gate",
-                      firstDest.id,
-                      true
-                    );
-
-                    if (path) {
-                      setCurrentPath(path);
-                    } else {
-                      const fallbackPath = {
-                        areas: [
-                          {
-                            ...userPosition,
-                            id: "current-position",
-                            name: "현재 위치",
-                            position: gpsToPosition(
-                              userPosition.latitude,
-                              userPosition.longitude
-                            ),
-                          },
-                          firstDest,
-                        ],
-                        totalDistance: firstDest.distance || 0,
-                        estimatedTime: Math.ceil(
-                          (firstDest.distance || 0) / 67
-                        ),
-                      };
-                      setCurrentPath(fallbackPath);
+                    // 확인 시 새로운 경로를 원본으로 저장
+                    try {
+                      localStorage.setItem(
+                        "originalRecommendedRoute",
+                        JSON.stringify(validRoute)
+                      );
+                      originalRecommendedRouteRef.current = validRoute;
+                    } catch (e) {
+                      console.error("로컬 스토리지 저장 실패:", e);
+                      originalRecommendedRouteRef.current = validRoute;
                     }
+
+                    // 기존 경로가 있으면 재사용 (이전과 동일한 경로로 안내)
+                    // 혼잡도 기반 재탐색을 하지 않은 경우 기존 경로 유지
+                    if (
+                      !currentPath ||
+                      !currentPath.areas ||
+                      currentPath.areas.length === 0
+                    ) {
+                      // 기존 경로가 없으면 새로 계산
+                      const firstDest = validRoute[0];
+                      const path = findOptimalPath(
+                        "main-gate",
+                        firstDest.id,
+                        true
+                      );
+
+                      if (path) {
+                        setCurrentPath(path);
+                      } else {
+                        const fallbackPath = {
+                          areas: [
+                            {
+                              ...userPosition,
+                              id: "current-position",
+                              name: "현재 위치",
+                              position: gpsToPosition(
+                                userPosition.latitude,
+                                userPosition.longitude
+                              ),
+                            },
+                            firstDest,
+                          ],
+                          totalDistance: firstDest.distance || 0,
+                          estimatedTime: Math.ceil(
+                            (firstDest.distance || 0) / 67
+                          ),
+                        };
+                        setCurrentPath(fallbackPath);
+                      }
+                    }
+                    // currentPath가 이미 있으면 그대로 재사용 (setCurrentPath 호출 안 함)
                     // navigation 페이지로 이동 전 원래 위치 저장
                     savedUserPositionRef.current = { ...userPosition };
                     // navigation 페이지로 이동 (userPosition은 변경하지 않음 - navigation 페이지 내부에서 정문 위치 사용)
