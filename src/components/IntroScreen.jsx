@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import "./IntroScreen.css";
-import rinniImage from "../image/rinni.png";
-import homeImage from "../image/home.png";
 
 function IntroScreen({ onStart }) {
   const [showOptions, setShowOptions] = useState(false);
@@ -9,7 +7,7 @@ function IntroScreen({ onStart }) {
   return (
     <div
       className="intro-screen"
-      style={{ backgroundImage: `url(${homeImage})` }}
+      style={{ backgroundImage: `url(/image/home.png)` }}
     >
       <div className="intro-content">
         <div className="intro-header">
@@ -35,7 +33,7 @@ function IntroScreen({ onStart }) {
           </button>
         </div>
         <div className="intro-character">
-          <img src={rinniImage} alt="Rinni" className="character-image" />
+          <img src="/image/rinni.png" alt="Rinni" className="character-image" />
         </div>
       </div>
     </div>

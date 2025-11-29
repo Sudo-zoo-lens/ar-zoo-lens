@@ -532,6 +532,12 @@ function FirstPersonMapView({
   const add3DModel = () => {
     if (!map.current) return;
 
+    // public 폴더 기준 모델 경로 생성 함수
+    const getModelPath = (filename) => {
+      // public 폴더 기준 절대 경로 사용 (개발/배포 환경 모두 동일)
+      return `/image/3d/${filename}`;
+    };
+
     const create3DLayer = (
       modelPath,
       layerId,
@@ -681,7 +687,7 @@ function FirstPersonMapView({
 
     // 정문 모델 - 정문 위치에 배치
     const mainGateLayer = create3DLayer(
-      new URL("../image/3d/main-gate.glb", import.meta.url).href,
+      getModelPath("main-gate.glb"),
       "3d-model-main-gate",
       mainGate.longitude,
       mainGate.latitude,
@@ -694,7 +700,7 @@ function FirstPersonMapView({
     const musicFountain = zooAreas.find((area) => area.id === "music-fountain");
     if (musicFountain) {
       const musicFountainLayer = create3DLayer(
-        new URL("../image/3d/musical-fountain.glb", import.meta.url).href,
+        getModelPath("musical-fountain.glb"),
         "3d-model-musical-fountain",
         musicFountain.longitude,
         musicFountain.latitude,
@@ -708,7 +714,7 @@ function FirstPersonMapView({
     const seaAnimals = zooAreas.find((area) => area.id === "sea-animals");
     if (seaAnimals) {
       const seaAnimalsLayer = create3DLayer(
-        new URL("../image/3d/Ocean-Animal-Museum.glb", import.meta.url).href,
+        getModelPath("Ocean-Animal-Museum.glb"),
         "3d-model-ocean-museum",
         seaAnimals.longitude,
         seaAnimals.latitude,
@@ -724,7 +730,7 @@ function FirstPersonMapView({
     );
     if (tropicalAnimals) {
       const tropicalAnimalsLayer = create3DLayer(
-        new URL("../image/3d/Tropical-Animal-Museum.glb", import.meta.url).href,
+        getModelPath("Tropical-Animal-Museum.glb"),
         "3d-model-tropical-museum",
         tropicalAnimals.longitude,
         tropicalAnimals.latitude,
@@ -738,7 +744,7 @@ function FirstPersonMapView({
     const octagon = zooAreas.find((area) => area.id === "octagon");
     if (octagon) {
       const octagonLayer = create3DLayer(
-        new URL("../image/3d/palgakjeong.glb", import.meta.url).href,
+        getModelPath("palgakjeong.glb"),
         "3d-model-palgakjeong",
         octagon.longitude,
         octagon.latitude,
@@ -761,7 +767,7 @@ function FirstPersonMapView({
 
     animalOffsets.forEach((animal) => {
       const animalLayer = create3DLayer(
-        new URL(`../image/3d/${animal.name}.glb`, import.meta.url).href,
+        getModelPath(`${animal.name}.glb`),
         `3d-model-${animal.name}`,
         mainGate.longitude + animal.offsetLng,
         mainGate.latitude + animal.offsetLat,
@@ -868,13 +874,15 @@ function FirstPersonMapView({
           userPosition={characterPosition}
           videoRef={videoRef}
         >
-          <AR3DModels
-            userPosition={characterPosition}
-            characterPosition={characterPosition}
-            onRendererReady={(renderer) => {
-              arRendererRef.current = renderer;
-            }}
-          />
+          {characterPosition && (
+            <AR3DModels
+              userPosition={characterPosition}
+              characterPosition={characterPosition}
+              onRendererReady={(renderer) => {
+                arRendererRef.current = renderer;
+              }}
+            />
+          )}
         </CameraView>
       )}
 

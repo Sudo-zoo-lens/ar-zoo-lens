@@ -15,38 +15,45 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
   const rendererRef = useRef(null);
   const modelsRef = useRef({});
   const animationFrameRef = useRef(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Scene 설정
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
+    try {
+      // Scene 설정
+      const scene = new THREE.Scene();
+      sceneRef.current = scene;
 
-    // Camera 설정 (AR용 원근 카메라)
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-    camera.position.set(0, 1.6, 0); // 사용자 눈 높이
-    cameraRef.current = camera;
+      // Camera 설정 (AR용 원근 카메라)
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(0, 1.6, 0); // 사용자 눈 높이
+      cameraRef.current = camera;
 
-    // Renderer 설정
-    const renderer = new THREE.WebGLRenderer({
-      alpha: true,
-      antialias: true,
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
-    containerRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
+      // Renderer 설정
+      const renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      containerRef.current.appendChild(renderer.domElement);
+      rendererRef.current = renderer;
 
-    // renderer 준비 완료 알림
-    if (onRendererReady) {
-      onRendererReady(renderer);
+      // renderer 준비 완료 알림
+      if (onRendererReady) {
+        onRendererReady(renderer);
+      }
+    } catch (err) {
+      console.error("AR3DModels 초기화 오류:", err);
+      setError("3D 모델을 초기화하는 중 오류가 발생했습니다.");
+      return;
     }
 
     // 조명 추가
@@ -66,36 +73,40 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
     if (!mainGate) return;
 
     // 시설 모델 로드 및 배치
+    // public 폴더의 파일은 빌드 시 루트에 복사되므로 /image/3d/ 경로 사용
+    const getModelPath = (filename) => {
+      // public 폴더 기준 절대 경로 사용 (개발/배포 환경 모두 동일)
+      return `/image/3d/${filename}`;
+    };
+
     const facilityModels = [
       {
         id: "main-gate",
-        path: new URL("../image/3d/main-gate.glb", import.meta.url).href,
+        path: getModelPath("main-gate.glb"),
         areaId: "main-gate",
         scale: 0.5,
       },
       {
         id: "musical-fountain",
-        path: new URL("../image/3d/musical-fountain.glb", import.meta.url).href,
+        path: getModelPath("musical-fountain.glb"),
         areaId: "music-fountain",
         scale: 0.5,
       },
       {
         id: "ocean-museum",
-        path: new URL("../image/3d/Ocean-Animal-Museum.glb", import.meta.url)
-          .href,
+        path: getModelPath("Ocean-Animal-Museum.glb"),
         areaId: "sea-animals",
         scale: 0.5,
       },
       {
         id: "tropical-museum",
-        path: new URL("../image/3d/Tropical-Animal-Museum.glb", import.meta.url)
-          .href,
+        path: getModelPath("Tropical-Animal-Museum.glb"),
         areaId: "tropical-animals",
         scale: 0.5,
       },
       {
         id: "palgakjeong",
-        path: new URL("../image/3d/palgakjeong.glb", import.meta.url).href,
+        path: getModelPath("palgakjeong.glb"),
         areaId: "octagon",
         scale: 0.5,
       },
@@ -108,23 +119,35 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       loader.load(
         modelConfig.path,
         (gltf) => {
-          const model = gltf.scene.clone();
-          model.scale.set(
-            modelConfig.scale,
-            modelConfig.scale,
-            modelConfig.scale
-          );
-          model.visible = false; // 초기에는 숨김
-          scene.add(model);
-          modelsRef.current[modelConfig.id] = {
-            model,
-            area,
-            type: "facility",
-          };
+          try {
+            const model = gltf.scene.clone();
+            model.scale.set(
+              modelConfig.scale,
+              modelConfig.scale,
+              modelConfig.scale
+            );
+            model.visible = false; // 초기에는 숨김
+            scene.add(model);
+            modelsRef.current[modelConfig.id] = {
+              model,
+              area,
+              type: "facility",
+            };
+          } catch (err) {
+            console.error(`모델 처리 오류 (${modelConfig.id}):`, err);
+          }
         },
-        undefined,
+        (progress) => {
+          // 로딩 진행 상황 (선택사항)
+          if (progress.lengthComputable) {
+            const percentComplete = (progress.loaded / progress.total) * 100;
+            // console.log(`${modelConfig.id} 로딩: ${percentComplete.toFixed(2)}%`);
+          }
+        },
         (error) => {
           console.error(`모델 로딩 오류 (${modelConfig.id}):`, error);
+          console.error(`경로: ${modelConfig.path}`);
+          // 에러가 발생해도 앱이 크래시되지 않도록 계속 진행
         }
       );
     });
@@ -142,24 +165,32 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
 
     animalOffsets.forEach((animal) => {
       loader.load(
-        new URL(`../image/3d/${animal.name}.glb`, import.meta.url).href,
+        getModelPath(`${animal.name}.glb`),
         (gltf) => {
-          const model = gltf.scene.clone();
-          model.scale.set(0.3, 0.3, 0.3);
-          model.visible = false;
-          scene.add(model);
-          modelsRef.current[animal.name] = {
-            model,
-            area: {
-              latitude: mainGate.latitude + animal.offsetLat,
-              longitude: mainGate.longitude + animal.offsetLng,
-            },
-            type: "animal",
-          };
+          try {
+            const model = gltf.scene.clone();
+            model.scale.set(0.3, 0.3, 0.3);
+            model.visible = false;
+            scene.add(model);
+            modelsRef.current[animal.name] = {
+              model,
+              area: {
+                latitude: mainGate.latitude + animal.offsetLat,
+                longitude: mainGate.longitude + animal.offsetLng,
+              },
+              type: "animal",
+            };
+          } catch (err) {
+            console.error(`동물 모델 처리 오류 (${animal.name}):`, err);
+          }
         },
-        undefined,
+        (progress) => {
+          // 로딩 진행 상황 (선택사항)
+        },
         (error) => {
           console.error(`동물 모델 로딩 오류 (${animal.name}):`, error);
+          console.error(`경로: ${getModelPath(`${animal.name}.glb`)}`);
+          // 에러가 발생해도 앱이 크래시되지 않도록 계속 진행
         }
       );
     });
@@ -184,7 +215,7 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         return;
 
       const currentPos = characterPosition || userPosition;
-      if (!currentPos) return;
+      if (!currentPos || !currentPos.latitude || !currentPos.longitude) return;
 
       // 모든 모델 위치 업데이트
       Object.keys(modelsRef.current).forEach((key) => {
@@ -246,12 +277,20 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       sceneRef.current = null;
       cameraRef.current = null;
     };
-  }, []);
+  }, [userPosition, characterPosition, onRendererReady]);
 
   // 위치가 변경될 때마다 모델 위치 업데이트
   useEffect(() => {
     // 위치 업데이트는 애니메이션 루프에서 처리됨
   }, [userPosition, characterPosition]);
+
+  if (error) {
+    return (
+      <div className="ar-3d-models-error">
+        <div className="error-message">{error}</div>
+      </div>
+    );
+  }
 
   return <div ref={containerRef} className="ar-3d-models-container" />;
 }

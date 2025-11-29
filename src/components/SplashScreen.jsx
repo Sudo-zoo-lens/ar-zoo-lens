@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import "./SplashScreen.css";
-import splashImage from "../image/splash.png";
-import splashMobileImage from "../image/splash-mobile.png";
 
 function SplashScreen() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 767);
@@ -18,7 +16,7 @@ function SplashScreen() {
   return (
     <div className="splash-screen">
       <img
-        src={isMobile ? splashMobileImage : splashImage}
+        src={isMobile ? "/image/splash-mobile.png" : "/image/splash.png"}
         alt="AR Zoo Lens"
         className="splash-image"
       />
