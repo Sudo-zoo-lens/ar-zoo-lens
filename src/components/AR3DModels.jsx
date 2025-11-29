@@ -20,9 +20,10 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    let scene;
     try {
       // Scene 설정
-      const scene = new THREE.Scene();
+      scene = new THREE.Scene();
       sceneRef.current = scene;
 
       // Camera 설정 (AR용 원근 카메라)
@@ -56,6 +57,12 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       return;
     }
 
+    // scene이 없으면 조기 종료
+    if (!scene || !sceneRef.current) {
+      console.error("[AR3DModels] Scene이 초기화되지 않았습니다.");
+      return;
+    }
+
     // 조명 추가
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -76,7 +83,9 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
     // public 폴더의 파일은 빌드 시 루트에 복사되므로 /image/3d/ 경로 사용
     const getModelPath = (filename) => {
       // public 폴더 기준 절대 경로 사용 (개발/배포 환경 모두 동일)
-      return `/image/3d/${filename}`;
+      const path = `/image/3d/${filename}`;
+      console.log(`[AR3DModels] 모델 경로: ${path}`);
+      return path;
     };
 
     const facilityModels = [
@@ -127,7 +136,9 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
               modelConfig.scale
             );
             model.visible = false; // 초기에는 숨김
-            scene.add(model);
+            if (sceneRef.current) {
+              sceneRef.current.add(model);
+            }
             modelsRef.current[modelConfig.id] = {
               model,
               area,
@@ -145,22 +156,40 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
           }
         },
         (error) => {
-          console.error(`모델 로딩 오류 (${modelConfig.id}):`, error);
-          console.error(`경로: ${modelConfig.path}`);
+          console.error(
+            `[AR3DModels] 모델 로딩 오류 (${modelConfig.id}):`,
+            error
+          );
+          console.error(`[AR3DModels] 시도한 경로: ${modelConfig.path}`);
+          console.error(`[AR3DModels] 에러 상세:`, {
+            message: error?.message,
+            stack: error?.stack,
+            type: error?.type,
+          });
           // 에러가 발생해도 앱이 크래시되지 않도록 계속 진행
+          setError((prev) =>
+            prev
+              ? `${prev}\n${modelConfig.id} 로딩 실패`
+              : `${modelConfig.id} 로딩 실패`
+          );
         }
       );
     });
 
     // 동물 모델 로드 및 배치 (정문 근처)
     const animalOffsets = [
-      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001 },
-      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001 },
-      { name: "green-dinosaur", offsetLng: 0.0001, offsetLat: -0.0001 },
-      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001 },
-      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0 },
-      { name: "sloth", offsetLng: -0.00015, offsetLat: 0 },
-      { name: "nubie", offsetLng: 0, offsetLat: 0.00015 },
+      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 0.3 },
+      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 0.3 },
+      {
+        name: "green-dinosaur",
+        offsetLng: 0.0001,
+        offsetLat: -0.0001,
+        scale: 0.3,
+      },
+      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 0.005 }, // 미어켓 크기 더 줄임
+      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 0.3 },
+      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 0.3 },
+      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 0.3 },
     ];
 
     animalOffsets.forEach((animal) => {
@@ -169,9 +198,69 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         (gltf) => {
           try {
             const model = gltf.scene.clone();
-            model.scale.set(0.3, 0.3, 0.3);
+            const targetScale = animal.scale || 0.3; // 기본값 0.3
+
+            // 모델의 원본 크기 확인
+            const originalBox = new THREE.Box3().setFromObject(model);
+            const originalSize = originalBox.getSize(new THREE.Vector3());
+            const maxOriginalSize = Math.max(
+              originalSize.x,
+              originalSize.y,
+              originalSize.z
+            );
+
+            // 모든 자식 객체의 scale을 1로 리셋
+            model.traverse((child) => {
+              if (child.isMesh || child.isGroup || child.isObject3D) {
+                child.scale.set(1, 1, 1);
+              }
+            });
+            model.scale.set(1, 1, 1);
+
+            // geometry를 직접 스케일링
+            model.traverse((child) => {
+              if (child.isMesh && child.geometry) {
+                // geometry를 복사해서 원본을 보존
+                if (!child.geometry.userData.original) {
+                  child.geometry.userData.original = true;
+                  // geometry의 모든 버텍스를 스케일링
+                  const positions = child.geometry.attributes.position;
+                  if (positions) {
+                    for (let i = 0; i < positions.count; i++) {
+                      positions.setX(i, positions.getX(i) * targetScale);
+                      positions.setY(i, positions.getY(i) * targetScale);
+                      positions.setZ(i, positions.getZ(i) * targetScale);
+                    }
+                    positions.needsUpdate = true;
+                    child.geometry.computeBoundingBox();
+                    child.geometry.computeBoundingSphere();
+                  }
+                }
+              }
+            });
+
+            // 최종 크기 확인
+            const finalBox = new THREE.Box3().setFromObject(model);
+            const finalSize = finalBox.getSize(new THREE.Vector3());
+            const maxFinalSize = Math.max(
+              finalSize.x,
+              finalSize.y,
+              finalSize.z
+            );
+            console.log(
+              `[AR3DModels] ${animal.name} 모델 최종 크기:`,
+              finalSize,
+              `최대: ${maxFinalSize} (${(
+                (maxFinalSize / maxOriginalSize) *
+                100
+              ).toFixed(1)}%)`
+            );
+
             model.visible = false;
-            scene.add(model);
+            if (sceneRef.current) {
+              sceneRef.current.add(model);
+            }
+
             modelsRef.current[animal.name] = {
               model,
               area: {
@@ -179,6 +268,7 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
                 longitude: mainGate.longitude + animal.offsetLng,
               },
               type: "animal",
+              scale: targetScale, // scale 정보도 저장
             };
           } catch (err) {
             console.error(`동물 모델 처리 오류 (${animal.name}):`, err);
@@ -188,9 +278,23 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
           // 로딩 진행 상황 (선택사항)
         },
         (error) => {
-          console.error(`동물 모델 로딩 오류 (${animal.name}):`, error);
-          console.error(`경로: ${getModelPath(`${animal.name}.glb`)}`);
+          const modelPath = getModelPath(`${animal.name}.glb`);
+          console.error(
+            `[AR3DModels] 동물 모델 로딩 오류 (${animal.name}):`,
+            error
+          );
+          console.error(`[AR3DModels] 시도한 경로: ${modelPath}`);
+          console.error(`[AR3DModels] 에러 상세:`, {
+            message: error?.message,
+            stack: error?.stack,
+            type: error?.type,
+          });
           // 에러가 발생해도 앱이 크래시되지 않도록 계속 진행
+          setError((prev) =>
+            prev
+              ? `${prev}\n${animal.name} 로딩 실패`
+              : `${animal.name} 로딩 실패`
+          );
         }
       );
     });
@@ -209,48 +313,54 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
 
     // 애니메이션 루프
     const animate = () => {
-      animationFrameRef.current = requestAnimationFrame(animate);
+      try {
+        animationFrameRef.current = requestAnimationFrame(animate);
 
-      if (!cameraRef.current || !sceneRef.current || !rendererRef.current)
-        return;
+        if (!cameraRef.current || !sceneRef.current || !rendererRef.current)
+          return;
 
-      const currentPos = characterPosition || userPosition;
-      if (!currentPos || !currentPos.latitude || !currentPos.longitude) return;
+        const currentPos = characterPosition || userPosition;
+        if (!currentPos || !currentPos.latitude || !currentPos.longitude)
+          return;
 
-      // 모든 모델 위치 업데이트
-      Object.keys(modelsRef.current).forEach((key) => {
-        const modelData = modelsRef.current[key];
-        if (!modelData || !modelData.model) return;
+        // 모든 모델 위치 업데이트
+        Object.keys(modelsRef.current).forEach((key) => {
+          const modelData = modelsRef.current[key];
+          if (!modelData || !modelData.model) return;
 
-        const distance = calculateDistance(
-          currentPos.latitude,
-          currentPos.longitude,
-          modelData.area.latitude,
-          modelData.area.longitude
-        );
-
-        // 100m 이내에 있는 모델만 표시
-        if (distance < 100) {
-          const position = gpsTo3D(
-            modelData.area.latitude,
-            modelData.area.longitude,
+          const distance = calculateDistance(
             currentPos.latitude,
-            currentPos.longitude
+            currentPos.longitude,
+            modelData.area.latitude,
+            modelData.area.longitude
           );
 
-          modelData.model.position.copy(position);
-          modelData.model.visible = true;
+          // 100m 이내에 있는 모델만 표시
+          if (distance < 100) {
+            const position = gpsTo3D(
+              modelData.area.latitude,
+              modelData.area.longitude,
+              currentPos.latitude,
+              currentPos.longitude
+            );
 
-          // 카메라를 향하도록 회전 (선택사항)
-          if (modelData.type === "animal") {
-            modelData.model.lookAt(cameraRef.current.position);
+            modelData.model.position.copy(position);
+            modelData.model.visible = true;
+
+            // 카메라를 향하도록 회전 (선택사항)
+            if (modelData.type === "animal") {
+              modelData.model.lookAt(cameraRef.current.position);
+            }
+          } else {
+            modelData.model.visible = false;
           }
-        } else {
-          modelData.model.visible = false;
-        }
-      });
+        });
 
-      rendererRef.current.render(sceneRef.current, cameraRef.current);
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      } catch (err) {
+        console.error("[AR3DModels] 애니메이션 루프 오류:", err);
+        // 에러가 발생해도 계속 실행
+      }
     };
 
     animate();
@@ -284,15 +394,32 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
     // 위치 업데이트는 애니메이션 루프에서 처리됨
   }, [userPosition, characterPosition]);
 
-  if (error) {
-    return (
-      <div className="ar-3d-models-error">
-        <div className="error-message">{error}</div>
-      </div>
-    );
-  }
-
-  return <div ref={containerRef} className="ar-3d-models-container" />;
+  // 에러가 있어도 컨테이너는 렌더링 (일부 모델이 실패해도 다른 모델은 표시 가능)
+  return (
+    <>
+      {error && (
+        <div
+          className="ar-3d-models-error"
+          style={{
+            position: "absolute",
+            top: "10px",
+            left: "10px",
+            background: "rgba(255, 0, 0, 0.8)",
+            color: "white",
+            padding: "10px",
+            borderRadius: "5px",
+            fontSize: "12px",
+            zIndex: 1000,
+            maxWidth: "300px",
+          }}
+        >
+          <div>일부 모델 로딩 실패</div>
+          <small>{error}</small>
+        </div>
+      )}
+      <div ref={containerRef} className="ar-3d-models-container" />
+    </>
+  );
 }
 
 export default AR3DModels;

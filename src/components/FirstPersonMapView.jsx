@@ -756,13 +756,18 @@ function FirstPersonMapView({
 
     // 동물 모델들을 정문 근처에 배치 (정문 위치 기준으로 작은 오프셋)
     const animalOffsets = [
-      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001 },
-      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001 },
-      { name: "green-dinosaur", offsetLng: 0.0001, offsetLat: -0.0001 },
-      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001 },
-      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0 },
-      { name: "sloth", offsetLng: -0.00015, offsetLat: 0 },
-      { name: "nubie", offsetLng: 0, offsetLat: 0.00015 },
+      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 5 },
+      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 5 },
+      {
+        name: "green-dinosaur",
+        offsetLng: 0.0001,
+        offsetLat: -0.0001,
+        scale: 5,
+      },
+      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 1 }, // 미어켓 크기 줄임
+      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 5 },
+      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 5 },
+      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 5 },
     ];
 
     animalOffsets.forEach((animal) => {
@@ -771,7 +776,7 @@ function FirstPersonMapView({
         `3d-model-${animal.name}`,
         mainGate.longitude + animal.offsetLng,
         mainGate.latitude + animal.offsetLat,
-        5,
+        animal.scale || 5, // 각 동물의 scale 사용
         true
       );
       map.current.addLayer(animalLayer);

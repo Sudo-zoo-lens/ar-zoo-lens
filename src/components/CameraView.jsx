@@ -152,7 +152,8 @@ function CameraView({
         </div>
       )}
 
-      {hasCamera && showAR && (
+      {/* 카메라가 없어도 children은 렌더링 (GLB 모델 등) */}
+      {showAR && hasCamera && (
         <AROverlay
           userPosition={userPosition}
           onAreaSelect={onAreaSelect}
@@ -161,11 +162,10 @@ function CameraView({
         />
       )}
 
-      {hasCamera && !showAR && <div className="ar-overlay">{children}</div>}
+      {/* 카메라가 없어도 3D 모델은 표시 가능 */}
+      {!showAR && <div className="ar-overlay">{children}</div>}
 
-      {hasCamera && children && (
-        <div className="camera-controls">{children}</div>
-      )}
+      {children && <div className="camera-controls">{children}</div>}
     </div>
   );
 }
