@@ -131,18 +131,22 @@ canvas {
   gap: 8px;
 }
 
+.route-chips-container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
 .route-chips {
   display: flex;
   align-items: center;
   gap: 8px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  flex: 1;
   padding: 4px 0;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.route-chips::-webkit-scrollbar {
-  display: none;
+  min-width: 0;
 }
 
 .route-chip {
@@ -181,6 +185,9 @@ canvas {
   background: #2563eb;
   color: white;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  flex-shrink: 0;
+  margin-left: auto;
+  align-self: flex-start;
 }
 
 .route-chip.explore-btn:hover:not(:disabled) {

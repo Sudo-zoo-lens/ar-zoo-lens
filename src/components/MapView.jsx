@@ -2,7 +2,6 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./MapView.css";
-import Joystick from "./Joystick";
 import {
   zooAreas,
   calculateDistance,
@@ -28,7 +27,6 @@ function MapView({
   const markers = useRef([]);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [, forceUpdate] = useState(0);
-  const moveInterval = useRef(null);
   const categoryFilterRef = useRef(categoryFilter);
 
   useEffect(() => {
@@ -40,64 +38,6 @@ function MapView({
       forceUpdate((prev) => prev + 1);
     }
   }, [congestionUpdate]);
-
-  const handleJoystickMove = (direction) => {
-    if (!map.current) return;
-
-    if (moveInterval.current) {
-      clearInterval(moveInterval.current);
-      moveInterval.current = null;
-    }
-
-    if (direction.x === 0 && direction.y === 0) {
-      return;
-    }
-
-    const moveSpeed = 0.00001;
-
-    const currentCenter = map.current.getCenter();
-    const currentBearing = map.current.getBearing();
-
-    const bearingRad = (currentBearing * Math.PI) / 180;
-
-    const moveX =
-      (direction.x * Math.cos(bearingRad) -
-        direction.y * Math.sin(bearingRad)) *
-      moveSpeed;
-    const moveY =
-      (direction.x * Math.sin(bearingRad) +
-        direction.y * Math.cos(bearingRad)) *
-      moveSpeed;
-
-    const newCenter = [currentCenter.lng + moveX, currentCenter.lat - moveY];
-
-    map.current.easeTo({
-      center: newCenter,
-      duration: 100,
-    });
-
-    moveInterval.current = setInterval(() => {
-      const currentCenter = map.current.getCenter();
-      const currentBearing = map.current.getBearing();
-      const bearingRad = (currentBearing * Math.PI) / 180;
-
-      const moveX =
-        (direction.x * Math.cos(bearingRad) -
-          direction.y * Math.sin(bearingRad)) *
-        moveSpeed;
-      const moveY =
-        (direction.x * Math.sin(bearingRad) +
-          direction.y * Math.cos(bearingRad)) *
-        moveSpeed;
-
-      const newCenter = [currentCenter.lng + moveX, currentCenter.lat - moveY];
-
-      map.current.easeTo({
-        center: newCenter,
-        duration: 100,
-      });
-    }, 50);
-  };
 
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
@@ -124,8 +64,9 @@ function MapView({
       projection: "globe",
     });
 
+    // 드래그로 지도 이동(pan) 활성화
     if (map.current.dragPan) {
-      map.current.dragPan.disable();
+      map.current.dragPan.enable();
     }
 
     map.current.on("load", () => {
@@ -142,86 +83,7 @@ function MapView({
       add3DModel();
     });
 
-    const canvas = map.current.getCanvas();
-    let isPointerDown = false;
-    let startX = 0;
-    let startY = 0;
-    let startBearing = 0;
-    let startPitch = 0;
-
-    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-    const onPointerDown = (x, y) => {
-      isPointerDown = true;
-      startX = x;
-      startY = y;
-      startBearing = map.current.getBearing();
-      startPitch = map.current.getPitch();
-      canvas.style.cursor = "grabbing";
-    };
-
-    const onPointerMove = (x, y) => {
-      if (!isPointerDown) return;
-      const dx = x - startX;
-      const dy = y - startY;
-
-      const newBearing = startBearing - dx * 0.3;
-      const newPitch = clamp(startPitch + dy * 0.2, 0, 85);
-
-      map.current.easeTo({
-        bearing: newBearing,
-        pitch: newPitch,
-        duration: 0,
-      });
-    };
-
-    const onPointerUp = () => {
-      isPointerDown = false;
-      canvas.style.cursor = "grab";
-      addMarkers();
-    };
-
-    const handleMouseDown = (e) => onPointerDown(e.clientX, e.clientY);
-    const handleMouseMove = (e) => onPointerMove(e.clientX, e.clientY);
-    const handleMouseUp = () => onPointerUp();
-
-    canvas.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-
-    const handleTouchStart = (e) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      onPointerDown(t.clientX, t.clientY);
-    };
-    const handleTouchMove = (e) => {
-      if (!isPointerDown || e.touches.length !== 1) return;
-      const t = e.touches[0];
-      onPointerMove(t.clientX, t.clientY);
-    };
-    const handleTouchEnd = () => onPointerUp();
-
-    canvas.addEventListener("touchstart", handleTouchStart, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: true });
-    window.addEventListener("touchend", handleTouchEnd);
-
-    map.current.on("rotate", () => {
-      addMarkers();
-    });
-
     return () => {
-      canvas.removeEventListener("mousedown", handleMouseDown);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      canvas.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
-
-      if (moveInterval.current) {
-        clearInterval(moveInterval.current);
-        moveInterval.current = null;
-      }
-
       markers.current.forEach((marker) => marker.remove());
       markers.current = [];
 
@@ -527,7 +389,7 @@ function MapView({
 
   useEffect(() => {
     if (map.current) {
-      map.current.setCenter([userPosition.longitude, userPosition.latitude]);
+      // 마커만 업데이트하고, 지도 center는 사용자가 드래그한 위치 유지
       addMarkers();
     }
   }, [userPosition, addMarkers]);
@@ -540,13 +402,6 @@ function MapView({
 
   return (
     <div className="map-view-container">
-      <div className="user-marker-overlay">
-        <div className="user-marker-container">
-          <div className="user-marker-dot"></div>
-          <div className="user-marker-pulse"></div>
-        </div>
-      </div>
-
       {currentPath && !selectedMarker && (
         <div className="ar-map-overlay">
           <div className="ar-info-panel">
@@ -682,8 +537,6 @@ function MapView({
       )}
 
       <div ref={mapContainer} className="mapbox-map" />
-
-      <Joystick onMove={handleJoystickMove} />
     </div>
   );
 }

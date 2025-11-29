@@ -1,0 +1,433 @@
+.first-person-map-view-container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+}
+
+.mapbox-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* 내비게이션 정보 패널 */
+.navigation-info-panel {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.95) 0%,
+    rgba(30, 41, 59, 0.95) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 16px 56px 16px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  pointer-events: auto;
+  animation: slideDown 0.5s ease-out;
+  border: 2px solid rgba(33, 150, 243, 0.3);
+  position: relative;
+  min-width: 300px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.navigation-info-content {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.navigation-info-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.nav-info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+.nav-value {
+  font-size: 13px;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.navigation-info-divider {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+}
+
+.back-navigation-btn {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(244, 67, 54, 0.5);
+  background: linear-gradient(
+    135deg,
+    rgba(244, 67, 54, 0.9),
+    rgba(229, 57, 53, 0.9)
+  );
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
+.back-navigation-btn:hover {
+  transform: translateY(-50%) scale(1.1);
+  background: linear-gradient(
+    135deg,
+    rgba(244, 67, 54, 1),
+    rgba(229, 57, 53, 1)
+  );
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+  border-color: rgba(244, 67, 54, 0.8);
+}
+
+.navigation-route-info {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.route-progress {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 사용자 위치 마커 오버레이 */
+.user-marker-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.user-marker-container {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-marker-dot {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background-color: #2196f3;
+  border: 4px solid white;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.5);
+  z-index: 2;
+}
+
+.user-marker-pulse {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background-color: rgba(33, 150, 243, 0.3);
+  border-radius: 50%;
+  top: 0;
+  left: 0;
+  animation: pulse 2s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* 커스텀 마커 스타일 */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.marker-container {
+  position: relative;
+  width: 40px;
+  height: 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ar-distance-badge {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  z-index: 10;
+  animation: glow 2s ease-in-out infinite, float 3s ease-in-out infinite;
+  backdrop-filter: blur(4px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-3px);
+  }
+}
+
+.marker-pin {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50% 50% 50% 0;
+  background-color: #2196f3;
+  transform: rotate(-45deg);
+  left: 0;
+  top: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 0 15px rgba(33, 150, 243, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: bounce 2s ease-in-out infinite;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.marker-emoji {
+  font-size: 20px;
+  transform: rotate(45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marker-shadow {
+  position: absolute;
+  width: 30px;
+  height: 10px;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4), transparent);
+  border-radius: 50%;
+  bottom: 0;
+  left: 5px;
+  animation: shadow 2s ease-in-out infinite;
+  filter: blur(3px);
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: rotate(-45deg) translateY(0);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  }
+  50% {
+    transform: rotate(-45deg) translateY(-10px);
+    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.4));
+  }
+}
+
+@keyframes shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(0.8);
+    opacity: 0.2;
+  }
+}
+
+.custom-marker.destination .marker-pin {
+  border: 3px solid #ff6b6b;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 107, 107, 0.6);
+  animation: destinationBounce 1.5s ease-in-out infinite;
+}
+
+@keyframes destinationBounce {
+  0%,
+  100% {
+    transform: rotate(-45deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-45deg) translateY(-12px);
+  }
+}
+
+.destination-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  background: #ff6b6b;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
+  animation: destinationPulse 2s ease-in-out infinite;
+  z-index: 11;
+}
+
+@keyframes destinationPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
+  }
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.6);
+  }
+}
+
+.custom-marker.start .marker-pin {
+  border: 3px solid #4caf50;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(76, 175, 80, 0.6);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .navigation-info-panel {
+    padding: 12px 48px 12px 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+    max-width: 90vw;
+    min-width: auto;
+  }
+
+  .navigation-info-content {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .navigation-info-divider {
+    display: none;
+  }
+
+  .nav-icon {
+    font-size: 20px;
+  }
+
+  .nav-label {
+    font-size: 9px;
+  }
+
+  .nav-value {
+    font-size: 11px;
+  }
+
+  .back-navigation-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    left: 12px;
+  }
+
+  .marker-pin {
+    width: 35px;
+    height: 35px;
+  }
+
+  .marker-emoji {
+    font-size: 18px;
+  }
+
+  .ar-distance-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+}
