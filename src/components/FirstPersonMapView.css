@@ -9,12 +9,12 @@
   height: 100%;
 }
 
-/* 내비게이션 정보 패널 */
-.navigation-info-panel {
-  position: absolute;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+/* 내비게이션 정보 패널 (상단) */
+.navigation-info-panel-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 999;
   pointer-events: none;
   background: linear-gradient(
@@ -23,18 +23,222 @@
     rgba(30, 41, 59, 0.95) 100%
   );
   backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 16px 56px 16px 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1),
+  border-radius: 0 0 20px 20px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   display: flex;
   gap: 16px;
   align-items: center;
   pointer-events: auto;
   animation: slideDown 0.5s ease-out;
-  border: 2px solid rgba(33, 150, 243, 0.3);
-  position: relative;
-  min-width: 300px;
+  border-bottom: 2px solid rgba(33, 150, 243, 0.3);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.back-navigation-btn-top {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(244, 67, 54, 0.5);
+  background: linear-gradient(
+    135deg,
+    rgba(244, 67, 54, 0.9),
+    rgba(229, 57, 53, 0.9)
+  );
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+  flex-shrink: 0;
+}
+
+.back-navigation-btn-top:hover {
+  transform: scale(1.1);
+  background: linear-gradient(
+    135deg,
+    rgba(244, 67, 54, 1),
+    rgba(229, 57, 53, 1)
+  );
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+  border-color: rgba(244, 67, 54, 0.8);
+}
+
+.navigation-info-content {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.navigation-info-content::-webkit-scrollbar {
+  display: none;
+}
+
+.navigation-info-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.nav-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.nav-info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+.nav-value {
+  font-size: 14px;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.navigation-info-divider {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  flex-shrink: 0;
+}
+
+.navigation-route-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.route-progress {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 도착 모달 */
+.arrival-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.arrival-modal {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.98) 0%,
+    rgba(30, 41, 59, 0.98) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 40px 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(76, 175, 80, 0.5);
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.arrival-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.arrival-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 12px 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.arrival-message {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  line-height: 1.5;
 }
 
 @keyframes slideDown {

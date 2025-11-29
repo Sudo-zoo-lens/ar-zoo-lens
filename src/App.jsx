@@ -42,6 +42,7 @@ function App() {
   const firstPersonModeRef = useRef(firstPersonMode);
   const userPositionRef = useRef(userPosition);
   const lastMoveTime = useRef(0);
+  const savedUserPositionRef = useRef(null); // navigation 시작 전 위치 저장
 
   // 스플래시 화면 타이머
   useEffect(() => {
@@ -80,11 +81,63 @@ function App() {
 
   // 내비게이션 페이지에서 뒤로가기
   const handleBackFromNavigation = useCallback(() => {
+    // 저장된 원래 위치로 복원
+    if (savedUserPositionRef.current) {
+      setUserPosition(savedUserPositionRef.current);
+      savedUserPositionRef.current = null;
+    }
     setCurrentPage("map");
     setIsNavigating(false);
     setCurrentPath(null);
     window.history.pushState({ page: "map" }, "", "/map");
   }, []);
+
+  // 다음 목적지로 이동
+  const handleNavigateToNext = useCallback(
+    (currentIndex) => {
+      if (!recommendedRoute || currentIndex >= recommendedRoute.length - 1) {
+        setIsNavigating(false);
+        setCurrentPath(null);
+        setActiveRouteIndex(0);
+        return;
+      }
+
+      const nextIndex = currentIndex + 1;
+      const currentDest = recommendedRoute[currentIndex];
+      const nextDest = recommendedRoute[nextIndex];
+
+      setActiveRouteIndex(nextIndex);
+
+      const path = findOptimalPath(currentDest.id, nextDest.id, true);
+
+      if (path) {
+        setCurrentPath(path);
+      } else {
+        const mainGate = zooAreas.find((area) => area.id === "main-gate");
+        const startPosition = mainGate
+          ? { latitude: mainGate.latitude, longitude: mainGate.longitude }
+          : userPosition;
+        const fallbackPath = {
+          areas: [
+            {
+              ...startPosition,
+              id: "current-position",
+              name: "현재 위치",
+              position: gpsToPosition(
+                startPosition.latitude,
+                startPosition.longitude
+              ),
+            },
+            nextDest,
+          ],
+          totalDistance: nextDest.distance || 0,
+          estimatedTime: Math.ceil((nextDest.distance || 0) / 67),
+        };
+        setCurrentPath(fallbackPath);
+      }
+    },
+    [recommendedRoute, userPosition]
+  );
 
   // 브라우저 뒤로가기/앞으로가기 처리
   useEffect(() => {
@@ -462,9 +515,16 @@ function App() {
           activeRouteIndex={activeRouteIndex}
           onBack={handleBackFromNavigation}
           onNavigateComplete={() => {
+            // 저장된 원래 위치로 복원
+            if (savedUserPositionRef.current) {
+              setUserPosition(savedUserPositionRef.current);
+              savedUserPositionRef.current = null;
+            }
             setIsNavigating(false);
             setCurrentPath(null);
+            setActiveRouteIndex(0);
           }}
+          onNavigateToNext={handleNavigateToNext}
         />
       </div>
     );
@@ -822,7 +882,9 @@ function App() {
                       };
                       setCurrentPath(fallbackPath);
                     }
-                    // navigation 페이지로 이동
+                    // navigation 페이지로 이동 전 원래 위치 저장
+                    savedUserPositionRef.current = { ...userPosition };
+                    // navigation 페이지로 이동 (userPosition은 변경하지 않음 - navigation 페이지 내부에서 정문 위치 사용)
                     setCurrentPage("navigation");
                     window.history.pushState(
                       { page: "navigation" },

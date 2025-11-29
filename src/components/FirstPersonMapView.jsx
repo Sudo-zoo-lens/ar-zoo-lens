@@ -8,6 +8,7 @@ import {
   calculateDistance,
   getCongestionColor,
   calculateBearing,
+  currentLocation,
 } from "../data/mockData";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
@@ -21,12 +22,124 @@ function FirstPersonMapView({
   activeRouteIndex,
   onBack,
   onNavigateComplete,
+  onNavigateToNext,
 }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markers = useRef([]);
   const moveInterval = useRef(null);
   const [, forceUpdate] = useState(0);
+  const [characterPosition, setCharacterPosition] = useState(() => {
+    const mainGate = zooAreas.find((area) => area.id === "main-gate");
+    return mainGate
+      ? { latitude: mainGate.latitude, longitude: mainGate.longitude }
+      : userPosition;
+  });
+  const characterPositionRef = useRef(characterPosition);
+  const nubieLayerRef = useRef(null);
+
+  // characterPosition이 변경될 때마다 ref 업데이트
+  useEffect(() => {
+    characterPositionRef.current = characterPosition;
+  }, [characterPosition]);
+
+  const [showArrivalModal, setShowArrivalModal] = useState(false);
+  const arrivalModalShownRef = useRef(false);
+  const arrivalTimerRef = useRef(null);
+
+  // activeRouteIndex가 변경되면 도착 모달 플래그 리셋 (단, 타이머 실행 중이 아닐 때만)
+  useEffect(() => {
+    // 타이머가 실행 중이 아니고 모달이 표시되지 않았을 때만 리셋
+    if (!arrivalTimerRef.current && !showArrivalModal) {
+      arrivalModalShownRef.current = false;
+    }
+  }, [activeRouteIndex, showArrivalModal]);
+
+  // 목적지 도착 감지 (interval 사용)
+  useEffect(() => {
+    if (!currentPath || !recommendedRoute || recommendedRoute.length === 0)
+      return;
+
+    const currentDest = recommendedRoute[activeRouteIndex];
+    if (!currentDest) return;
+
+    let checkInterval = null;
+
+    // 1초마다 거리 체크
+    const startChecking = () => {
+      checkInterval = setInterval(() => {
+        // 이미 모달이 표시 중이거나 타이머가 실행 중이면 감지하지 않음
+        if (arrivalModalShownRef.current || arrivalTimerRef.current) {
+          return;
+        }
+
+        const distanceToDest = calculateDistance(
+          characterPositionRef.current.latitude,
+          characterPositionRef.current.longitude,
+          currentDest.latitude,
+          currentDest.longitude
+        );
+
+        // 30m 이내에 도착하고, 아직 모달을 보여주지 않았으면 도착 모달 표시
+        if (distanceToDest < 30) {
+          arrivalModalShownRef.current = true;
+          setShowArrivalModal(true);
+
+          // interval 중단
+          if (checkInterval) {
+            clearInterval(checkInterval);
+            checkInterval = null;
+          }
+
+          // 기존 타이머가 있으면 정리
+          if (arrivalTimerRef.current) {
+            clearTimeout(arrivalTimerRef.current);
+          }
+
+          // 자동으로 2초 후 다음 목적지로 이동
+          const currentIndex = activeRouteIndex;
+          const hasNext = currentIndex < recommendedRoute.length - 1;
+          const navigateToNext = onNavigateToNext;
+          const navigateComplete = onNavigateComplete;
+
+          arrivalTimerRef.current = setTimeout(() => {
+            // 모달 닫기
+            setShowArrivalModal(false);
+            arrivalModalShownRef.current = false;
+            arrivalTimerRef.current = null;
+
+            // 다음 목적지로 이동 또는 완료
+            if (hasNext && navigateToNext) {
+              navigateToNext(currentIndex);
+            } else if (navigateComplete) {
+              navigateComplete();
+            }
+          }, 2000);
+        }
+
+        // 목적지에서 멀어지면 모달 표시 플래그 리셋 (다시 접근할 수 있도록)
+        if (distanceToDest > 50) {
+          arrivalModalShownRef.current = false;
+        }
+      }, 1000); // 1초마다 체크
+    };
+
+    startChecking();
+
+    // cleanup
+    return () => {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+      // 타이머는 cleanup에서 취소하지 않음 (모달이 닫힐 때까지 유지)
+    };
+  }, [
+    currentPath,
+    recommendedRoute,
+    activeRouteIndex,
+    onNavigateToNext,
+    onNavigateComplete,
+  ]);
 
   const handleJoystickMove = (direction) => {
     if (!map.current) return;
@@ -58,6 +171,14 @@ function FirstPersonMapView({
 
     const newCenter = [currentCenter.lng + moveX, currentCenter.lat - moveY];
 
+    // 캐릭터 위치도 함께 업데이트
+    const newCharacterPosition = {
+      latitude: currentCenter.lat - moveY,
+      longitude: currentCenter.lng + moveX,
+    };
+    setCharacterPosition(newCharacterPosition);
+    characterPositionRef.current = newCharacterPosition;
+
     map.current.easeTo({
       center: newCenter,
       duration: 100,
@@ -79,6 +200,14 @@ function FirstPersonMapView({
 
       const newCenter = [currentCenter.lng + moveX, currentCenter.lat - moveY];
 
+      // 캐릭터 위치도 함께 업데이트
+      const newCharPos = {
+        latitude: currentCenter.lat - moveY,
+        longitude: currentCenter.lng + moveX,
+      };
+      setCharacterPosition(newCharPos);
+      characterPositionRef.current = newCharPos;
+
       map.current.easeTo({
         center: newCenter,
         duration: 100,
@@ -89,9 +218,15 @@ function FirstPersonMapView({
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
+    // 정문 위치로 시작
+    const mainGate = zooAreas.find((area) => area.id === "main-gate");
+    const startPosition = mainGate
+      ? { latitude: mainGate.latitude, longitude: mainGate.longitude }
+      : userPosition;
+
     // 사용자 위치 중심으로 지도 초기화
     const bounds = new mapboxgl.LngLatBounds();
-    bounds.extend([userPosition.longitude, userPosition.latitude]);
+    bounds.extend([startPosition.longitude, startPosition.latitude]);
 
     // 경로에 포함된 모든 위치 추가
     if (currentPath && currentPath.areas) {
@@ -103,9 +238,9 @@ function FirstPersonMapView({
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: [userPosition.longitude, userPosition.latitude],
-      zoom: 17,
-      pitch: 0,
+      center: [startPosition.longitude, startPosition.latitude],
+      zoom: 19,
+      pitch: 65,
       bearing: 0,
       antialias: true,
       projection: "globe",
@@ -132,6 +267,22 @@ function FirstPersonMapView({
       addMarkers();
       addRoute();
       add3DModel();
+
+      // 다음 목적지 방향으로 카메라 회전
+      if (currentPath && currentPath.areas && currentPath.areas.length >= 2) {
+        const start = currentPath.areas[0];
+        const end = currentPath.areas[1];
+        const bearing = calculateBearing(
+          start.latitude,
+          start.longitude,
+          end.latitude,
+          end.longitude
+        );
+        map.current.easeTo({
+          bearing: bearing,
+          duration: 1000,
+        });
+      }
     });
 
     // 지도 회전/이동 제스처 설정
@@ -253,12 +404,22 @@ function FirstPersonMapView({
         }`;
         el.innerHTML = `
           <div class="marker-container">
-            ${!isStart ? `<div class="ar-distance-badge" style="background: linear-gradient(135deg, ${color}ee 0%, ${color}dd 100%); border-color: ${color}88;">
+            ${
+              !isStart
+                ? `<div class="ar-distance-badge" style="background: linear-gradient(135deg, ${color}ee 0%, ${color}dd 100%); border-color: ${color}88;">
               ${distance}m
-            </div>` : ""}
-            <div class="marker-pin" style="background-color: ${area.color || color}">
+            </div>`
+                : ""
+            }
+            <div class="marker-pin" style="background-color: ${
+              area.color || color
+            }">
               <span class="marker-emoji">${area.emoji}</span>
-              ${isDestination ? '<div class="destination-indicator">🎯</div>' : ""}
+              ${
+                isDestination
+                  ? '<div class="destination-indicator">🎯</div>'
+                  : ""
+              }
             </div>
             <div class="marker-shadow"></div>
           </div>
@@ -334,27 +495,8 @@ function FirstPersonMapView({
       latitudeOffset,
       scaleMultiplier = 5
     ) => {
-      const modelOrigin = [
-        userPosition.longitude + longitudeOffset,
-        userPosition.latitude + latitudeOffset,
-      ];
       const modelAltitude = 0;
       const modelRotate = [Math.PI / 2, 0, 0];
-
-      const modelAsMercatorCoordinate = mapboxgl.MercatorCoordinate.fromLngLat(
-        modelOrigin,
-        modelAltitude
-      );
-
-      const modelTransform = {
-        translateX: modelAsMercatorCoordinate.x,
-        translateY: modelAsMercatorCoordinate.y,
-        translateZ: modelAsMercatorCoordinate.z,
-        rotateX: modelRotate[0],
-        rotateY: modelRotate[1],
-        rotateZ: modelRotate[2],
-        scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits(),
-      };
 
       return {
         id: layerId,
@@ -398,6 +540,26 @@ function FirstPersonMapView({
         render: function (gl, matrix) {
           if (!this.model) return;
 
+          // 매 프레임 현재 캐릭터 위치를 계산
+          const currentCharPos = characterPositionRef.current;
+          const modelOrigin = [
+            currentCharPos.longitude + longitudeOffset,
+            currentCharPos.latitude + latitudeOffset,
+          ];
+
+          const modelAsMercatorCoordinate =
+            mapboxgl.MercatorCoordinate.fromLngLat(modelOrigin, modelAltitude);
+
+          const modelTransform = {
+            translateX: modelAsMercatorCoordinate.x,
+            translateY: modelAsMercatorCoordinate.y,
+            translateZ: modelAsMercatorCoordinate.z,
+            rotateX: modelRotate[0],
+            rotateY: modelRotate[1],
+            rotateZ: modelRotate[2],
+            scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits(),
+          };
+
           const rotationX = new THREE.Matrix4().makeRotationAxis(
             new THREE.Vector3(1, 0, 0),
             modelTransform.rotateX
@@ -437,31 +599,31 @@ function FirstPersonMapView({
       };
     };
 
-    const slothLayer = create3DLayer(
-      new URL("../image/3d/sloth.glb", import.meta.url).href,
-      "3d-model-sloth",
-      0.00005,
+    // nubie 캐릭터 레이어 - 정문 위치에 배치
+    const mainGate = zooAreas.find((area) => area.id === "main-gate");
+    const nubieLayer = create3DLayer(
+      new URL("../image/3d/nubie.glb", import.meta.url).href,
+      "3d-model-nubie",
+      0,
       0,
       5
     );
 
-    const meerkatLayer = create3DLayer(
-      new URL("../image/3d/meerkat.glb", import.meta.url).href,
-      "3d-model-meerkat",
-      -0.00005,
-      0,
-      5
-    );
-
+    // 기존 레이어가 있으면 제거
+    if (map.current.getLayer("3d-model")) {
+      map.current.removeLayer("3d-model");
+    }
     if (map.current.getLayer("3d-model-sloth")) {
       map.current.removeLayer("3d-model-sloth");
     }
     if (map.current.getLayer("3d-model-meerkat")) {
       map.current.removeLayer("3d-model-meerkat");
     }
+    if (map.current.getLayer("3d-model-nubie")) {
+      map.current.removeLayer("3d-model-nubie");
+    }
 
-    map.current.addLayer(slothLayer);
-    map.current.addLayer(meerkatLayer);
+    map.current.addLayer(nubieLayer);
   };
 
   useEffect(() => {
@@ -494,7 +656,13 @@ function FirstPersonMapView({
 
   useEffect(() => {
     if (map.current) {
-      map.current.setCenter([userPosition.longitude, userPosition.latitude]);
+      // 정문 위치로 설정
+      const mainGate = zooAreas.find((area) => area.id === "main-gate");
+      if (mainGate) {
+        map.current.setCenter([mainGate.longitude, mainGate.latitude]);
+      } else {
+        map.current.setCenter([userPosition.longitude, userPosition.latitude]);
+      }
       addMarkers();
     }
   }, [userPosition, addMarkers]);
@@ -504,20 +672,55 @@ function FirstPersonMapView({
   }
 
   const destination = currentPath.areas[currentPath.areas.length - 1];
-  const nextStop = currentPath.areas.length > 1 ? currentPath.areas[1] : destination;
+  const nextStop =
+    currentPath.areas.length > 1 ? currentPath.areas[1] : destination;
+
+  // 현재 위치에서 목적지까지의 거리 계산
+  const distanceToDestination = Math.round(
+    calculateDistance(
+      characterPosition.latitude,
+      characterPosition.longitude,
+      destination.latitude,
+      destination.longitude
+    )
+  );
+
+  // 예상 도착 시간 계산 (분속 67m 가정)
+  const estimatedMinutes = Math.ceil(distanceToDestination / 67);
 
   return (
     <div className="first-person-map-view-container">
-      <div className="user-marker-overlay">
-        <div className="user-marker-container">
-          <div className="user-marker-dot"></div>
-          <div className="user-marker-pulse"></div>
-        </div>
-      </div>
+      {/* 도착 모달 */}
+      {showArrivalModal &&
+        recommendedRoute &&
+        recommendedRoute[activeRouteIndex] && (
+          <div className="arrival-modal-overlay">
+            <div className="arrival-modal">
+              <div className="arrival-icon">✅</div>
+              <h3 className="arrival-title">
+                {recommendedRoute[activeRouteIndex].emoji}{" "}
+                {recommendedRoute[activeRouteIndex].name}에 도착했습니다!
+              </h3>
+              {activeRouteIndex < recommendedRoute.length - 1 ? (
+                <p className="arrival-message">
+                  다음 목적지로 안내를 시작합니다...
+                </p>
+              ) : (
+                <p className="arrival-message">
+                  🎉 모든 목적지를 방문하셨습니다!
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
       {/* 내비게이션 정보 패널 */}
-      <div className="navigation-info-panel">
-        <button className="back-navigation-btn" onClick={onBack} title="뒤로">
+      <div className="navigation-info-panel-top">
+        <button
+          className="back-navigation-btn-top"
+          onClick={onBack}
+          title="뒤로"
+        >
           ←
         </button>
         <div className="navigation-info-content">
@@ -534,8 +737,8 @@ function FirstPersonMapView({
           <div className="navigation-info-item">
             <span className="nav-icon">🚶</span>
             <div className="nav-info-content">
-              <div className="nav-label">거리</div>
-              <div className="nav-value">{currentPath.totalDistance}m</div>
+              <div className="nav-label">남은 거리</div>
+              <div className="nav-value">{distanceToDestination}m</div>
             </div>
           </div>
           <div className="navigation-info-divider"></div>
@@ -543,7 +746,7 @@ function FirstPersonMapView({
             <span className="nav-icon">⏱️</span>
             <div className="nav-info-content">
               <div className="nav-label">예상 시간</div>
-              <div className="nav-value">{currentPath.estimatedTime}분</div>
+              <div className="nav-value">{estimatedMinutes}분</div>
             </div>
           </div>
         </div>
