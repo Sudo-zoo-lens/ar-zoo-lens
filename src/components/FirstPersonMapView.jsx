@@ -256,38 +256,41 @@ function FirstPersonMapView({
     }
 
     map.current.on("load", () => {
-      // 경로에 맞춰 bounds 설정
+      // 네비게이션 모드에서는 시작 위치에 고정 zoom 사용 (fitBounds로 인한 멀리서 보이는 문제 방지)
       if (currentPath && currentPath.areas && currentPath.areas.length > 0) {
-        map.current.fitBounds(bounds, {
-          padding: { top: 100, bottom: 200, left: 80, right: 80 },
-          pitch: 0,
-          bearing: 0,
-          duration: 1000,
-        });
+        // 시작 위치로 이동하고 고정 zoom 사용
+        const startArea = currentPath.areas[0];
+        map.current.setCenter([startArea.longitude, startArea.latitude]);
+        map.current.setZoom(19); // 고정 zoom 레벨
+        map.current.setPitch(65);
+        map.current.setBearing(0);
+
+        // 다음 목적지 방향으로 카메라 회전
+        if (currentPath.areas.length >= 2) {
+          const end = currentPath.areas[1];
+          const bearing = calculateBearing(
+            startArea.latitude,
+            startArea.longitude,
+            end.latitude,
+            end.longitude
+          );
+          map.current.easeTo({
+            bearing: bearing,
+            duration: 1000,
+          });
+        }
       } else {
-        map.current.setCenter([userPosition.longitude, userPosition.latitude]);
-        map.current.setZoom(17);
+        map.current.setCenter([
+          startPosition.longitude,
+          startPosition.latitude,
+        ]);
+        map.current.setZoom(19);
+        map.current.setPitch(65);
       }
 
       addMarkers();
       addRoute();
       add3DModel();
-
-      // 다음 목적지 방향으로 카메라 회전
-      if (currentPath && currentPath.areas && currentPath.areas.length >= 2) {
-        const start = currentPath.areas[0];
-        const end = currentPath.areas[1];
-        const bearing = calculateBearing(
-          start.latitude,
-          start.longitude,
-          end.latitude,
-          end.longitude
-        );
-        map.current.easeTo({
-          bearing: bearing,
-          duration: 1000,
-        });
-      }
     });
 
     // 지도 회전/이동 제스처 설정
