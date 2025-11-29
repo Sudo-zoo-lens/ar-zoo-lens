@@ -21,7 +21,11 @@ function CameraView({
   useEffect(() => {
     if (!isActive) {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+        try {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+        } catch (e) {
+          console.warn("Stream cleanup error:", e);
+        }
         streamRef.current = null;
       }
       return;
@@ -29,28 +33,53 @@ function CameraView({
 
     const startCamera = async () => {
       try {
-        // HTTPS 환경 확인
-        if (
-          window.location.protocol !== "https:" &&
-          window.location.hostname !== "localhost" &&
-          window.location.hostname !== "127.0.0.1"
-        ) {
-          throw new Error("카메라 접근을 위해 HTTPS 연결이 필요합니다.");
+        // HTTPS 환경 확인 (안드로이드 크롬에서도 작동하도록)
+        const isSecure =
+          window.location.protocol === "https:" ||
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname.endsWith(".vercel.app") ||
+          window.location.hostname.endsWith(".netlify.app");
+
+        if (!isSecure) {
+          setError("카메라 접근을 위해 HTTPS 연결이 필요합니다.");
+          setHasCamera(false);
+          return;
         }
 
         // mediaDevices API 사용 가능 여부 확인
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("이 브라우저는 카메라 접근을 지원하지 않습니다.");
+        if (!navigator.mediaDevices) {
+          setError("이 브라우저는 카메라 접근을 지원하지 않습니다.");
+          setHasCamera(false);
+          return;
         }
 
-        const stream = await navigator.mediaDevices.getUserMedia({
+        if (!navigator.mediaDevices.getUserMedia) {
+          // 구형 브라우저 지원 (getUserMedia가 navigator에 직접 있는 경우)
+          const getUserMedia =
+            navigator.mediaDevices.getUserMedia ||
+            navigator.getUserMedia ||
+            navigator.webkitGetUserMedia ||
+            navigator.mozGetUserMedia;
+
+          if (!getUserMedia) {
+            setError("이 브라우저는 카메라 접근을 지원하지 않습니다.");
+            setHasCamera(false);
+            return;
+          }
+        }
+
+        // 안드로이드 크롬에서 더 안전한 설정으로 시작
+        const constraints = {
           video: {
             facingMode: "environment",
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
           },
           audio: false,
-        });
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -86,8 +115,6 @@ function CameraView({
           err.name === "OverconstrainedError" ||
           err.name === "ConstraintNotSatisfiedError"
         ) {
-          errorMessage =
-            "카메라 설정을 만족할 수 없습니다. 다른 카메라 설정을 시도합니다.";
           // Fallback: 더 낮은 해상도로 재시도
           try {
             const fallbackStream = await navigator.mediaDevices.getUserMedia({
@@ -105,18 +132,25 @@ function CameraView({
             }
           } catch (fallbackErr) {
             console.error("Fallback camera error:", fallbackErr);
-            errorMessage = err.message || "카메라에 접근할 수 없습니다.";
+            errorMessage =
+              "카메라 설정을 만족할 수 없습니다. 기본 설정으로 시도해주세요.";
           }
         } else if (err.message) {
           errorMessage = err.message;
         }
 
+        // 에러가 발생해도 페이지가 크래시되지 않도록 처리
         setError(errorMessage);
         setHasCamera(false);
       }
     };
 
-    startCamera();
+    // 에러가 발생해도 크래시되지 않도록 처리
+    startCamera().catch((e) => {
+      console.error("Failed to start camera:", e);
+      setError("카메라를 시작할 수 없습니다.");
+      setHasCamera(false);
+    });
 
     return () => {
       if (streamRef.current) {

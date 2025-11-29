@@ -84,7 +84,6 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
     const getModelPath = (filename) => {
       // public 폴더 기준 절대 경로 사용 (개발/배포 환경 모두 동일)
       const path = `/image/3d/${filename}`;
-      console.log(`[AR3DModels] 모델 경로: ${path}`);
       return path;
     };
 
@@ -246,14 +245,6 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
               finalSize.x,
               finalSize.y,
               finalSize.z
-            );
-            console.log(
-              `[AR3DModels] ${animal.name} 모델 최종 크기:`,
-              finalSize,
-              `최대: ${maxFinalSize} (${(
-                (maxFinalSize / maxOriginalSize) *
-                100
-              ).toFixed(1)}%)`
             );
 
             model.visible = false;
