@@ -36,14 +36,16 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       camera.position.set(0, 1.6, 0); // 사용자 눈 높이
       cameraRef.current = camera;
 
-      // Renderer 설정
+      // Renderer 설정 (성능 최적화)
       const renderer = new THREE.WebGLRenderer({
         alpha: true,
-        antialias: true,
+        antialias: false, // 성능 향상을 위해 끄기
+        powerPreference: "high-performance", // 고성능 모드
       });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.shadowMap.enabled = true;
+      // pixelRatio 제한하여 성능 향상 (최대 2)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = false; // 그림자 비활성화로 성능 향상
       containerRef.current.appendChild(renderer.domElement);
       rendererRef.current = renderer;
 
@@ -92,18 +94,18 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
 
     // 동물 모델 로드 및 배치 (정문 근처)
     const animalOffsets = [
-      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 2.0 },
-      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 2.0 },
+      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 3.5 },
+      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 3.5 },
       {
         name: "green-dinosaur",
         offsetLng: 0.0001,
         offsetLat: -0.0001,
-        scale: 2.0,
+        scale: 3.5,
       },
-      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 2.0 },
-      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 2.0 },
-      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 2.0 },
-      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 2.0 },
+      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 3.5 },
+      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 3.5 },
+      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 3.5 },
+      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 3.5 },
     ];
 
     animalOffsets.forEach((animal) => {
@@ -112,7 +114,7 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         (gltf) => {
           try {
             const model = gltf.scene.clone();
-            const targetScale = animal.scale || 2.0; // 기본값 2.0
+            const targetScale = animal.scale || 3.5; // 기본값 3.5
 
             // 모델의 원본 크기 확인
             const originalBox = new THREE.Box3().setFromObject(model);
@@ -248,9 +250,8 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
               distance,
             };
           })
-          .filter((item) => item !== null && item.distance < 100) // 100m 이내만 필터링
-          .sort((a, b) => a.distance - b.distance) // 거리순 정렬
-          .slice(0, 3); // 가장 가까운 3개만 선택
+          .filter((item) => item !== null) // 모든 모델 거리 계산
+          .sort((a, b) => a.distance - b.distance); // 거리순 정렬
 
         // 모든 모델을 먼저 숨김
         Object.keys(modelsRef.current).forEach((key) => {
@@ -260,8 +261,12 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
           }
         });
 
-        // 가장 가까운 3개 모델만 표시
-        modelsWithDistance.forEach(({ key, modelData, distance }) => {
+        // 가장 가까운 2개 모델만 100m 이내에서 표시
+        const visibleModels = modelsWithDistance
+          .filter((item) => item.distance < 100) // 100m 이내만
+          .slice(0, 2); // 최대 2개만
+
+        visibleModels.forEach(({ key, modelData, distance }) => {
           const position = gpsTo3D(
             modelData.area.latitude,
             modelData.area.longitude,

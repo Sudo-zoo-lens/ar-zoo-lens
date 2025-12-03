@@ -73,9 +73,9 @@ function CameraView({
         const constraints = {
           video: {
             facingMode: "environment",
-            width: { ideal: 640, max: 1280 }, // 해상도 낮춤
-            height: { ideal: 480, max: 720 }, // 해상도 낮춤
-            frameRate: { ideal: 24, max: 30 }, // 프레임레이트 제한
+            width: { ideal: 480, max: 640 }, // 해상도 더 낮춤 (성능 최적화)
+            height: { ideal: 360, max: 480 }, // 해상도 더 낮춤
+            frameRate: { ideal: 15, max: 20 }, // 프레임레이트 더 낮춤 (배터리 및 성능 최적화)
           },
           audio: false,
         };
