@@ -92,18 +92,18 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
 
     // 동물 모델 로드 및 배치 (정문 근처)
     const animalOffsets = [
-      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 0.3 },
-      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 0.3 },
+      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 0.8 },
+      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 0.8 },
       {
         name: "green-dinosaur",
         offsetLng: 0.0001,
         offsetLat: -0.0001,
-        scale: 0.3,
+        scale: 0.8,
       },
-      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 0.005 }, // 미어켓 크기 더 줄임
-      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 0.3 },
-      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 0.3 },
-      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 0.3 },
+      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 0.8 },
+      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 0.8 },
+      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 0.8 },
+      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 0.8 },
     ];
 
     animalOffsets.forEach((animal) => {
@@ -229,36 +229,52 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         if (!currentPos || !currentPos.latitude || !currentPos.longitude)
           return;
 
-        // 모든 모델 위치 업데이트
-        Object.keys(modelsRef.current).forEach((key) => {
-          const modelData = modelsRef.current[key];
-          if (!modelData || !modelData.model) return;
+        // 모든 모델의 거리 계산 및 정렬
+        const modelsWithDistance = Object.keys(modelsRef.current)
+          .map((key) => {
+            const modelData = modelsRef.current[key];
+            if (!modelData || !modelData.model) return null;
 
-          const distance = calculateDistance(
-            currentPos.latitude,
-            currentPos.longitude,
-            modelData.area.latitude,
-            modelData.area.longitude
-          );
-
-          // 100m 이내에 있는 모델만 표시
-          if (distance < 100) {
-            const position = gpsTo3D(
-              modelData.area.latitude,
-              modelData.area.longitude,
+            const distance = calculateDistance(
               currentPos.latitude,
-              currentPos.longitude
+              currentPos.longitude,
+              modelData.area.latitude,
+              modelData.area.longitude
             );
 
-            modelData.model.position.copy(position);
-            modelData.model.visible = true;
+            return {
+              key,
+              modelData,
+              distance,
+            };
+          })
+          .filter((item) => item !== null && item.distance < 100) // 100m 이내만 필터링
+          .sort((a, b) => a.distance - b.distance) // 거리순 정렬
+          .slice(0, 3); // 가장 가까운 3개만 선택
 
-            // 카메라를 향하도록 회전 (선택사항)
-            if (modelData.type === "animal") {
-              modelData.model.lookAt(cameraRef.current.position);
-            }
-          } else {
+        // 모든 모델을 먼저 숨김
+        Object.keys(modelsRef.current).forEach((key) => {
+          const modelData = modelsRef.current[key];
+          if (modelData && modelData.model) {
             modelData.model.visible = false;
+          }
+        });
+
+        // 가장 가까운 3개 모델만 표시
+        modelsWithDistance.forEach(({ key, modelData, distance }) => {
+          const position = gpsTo3D(
+            modelData.area.latitude,
+            modelData.area.longitude,
+            currentPos.latitude,
+            currentPos.longitude
+          );
+
+          modelData.model.position.copy(position);
+          modelData.model.visible = true;
+
+          // 카메라를 향하도록 회전 (선택사항)
+          if (modelData.type === "animal") {
+            modelData.model.lookAt(cameraRef.current.position);
           }
         });
 
