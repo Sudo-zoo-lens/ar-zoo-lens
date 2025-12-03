@@ -290,6 +290,8 @@ canvas {
   transition: all 0.2s ease;
   white-space: nowrap;
   flex-shrink: 0;
+  word-break: keep-all;
+  line-height: 1.2;
 }
 
 .map-action-btn:hover:not(:disabled) {
@@ -718,6 +720,10 @@ canvas {
   font-size: 14px;
   font-weight: 500;
   color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
 }
 
 .event-tag {

@@ -596,23 +596,13 @@ export const recommendRoute = (
     }
   }
 
+  // 이벤트 시간 무시하고 기준 수정: 혼잡도와 거리만 고려
   const finalRecommendations = destinationsWithDistance.sort((a, b) => {
     if (a.recommended !== b.recommended) {
       return a.recommended ? -1 : 1;
     }
 
-    if (a.isAttending !== b.isAttending) {
-      return a.isAttending ? -1 : 1;
-    }
-
-    if (a.hasEvent && b.hasEvent) {
-      if (a.priorityScore !== b.priorityScore) {
-        return b.priorityScore - a.priorityScore;
-      }
-    } else if (a.hasEvent !== b.hasEvent) {
-      return a.hasEvent ? -1 : 1;
-    }
-
+    // 이벤트 시간은 무시하고 혼잡도와 거리만 고려
     if (useCongestionOrder) {
       if (Math.abs(a.congestionLevel - b.congestionLevel) > 0.1) {
         return a.congestionLevel - b.congestionLevel;

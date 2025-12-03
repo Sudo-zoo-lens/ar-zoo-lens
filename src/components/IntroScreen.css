@@ -23,6 +23,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 40px 20px;
+  position: relative;
 }
 
 .intro-header {
@@ -42,15 +43,37 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 .intro-buttons {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  justify-content: flex-end;
+  gap: 20px;
   width: 100%;
   max-width: 320px;
-  margin-top: auto;
-  margin-bottom: 60px;
+  z-index: 2; /* 캐릭터 위에 표시 */
+}
+
+.intro-options-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .intro-btn {
@@ -79,18 +102,31 @@
 }
 
 .intro-character {
-  width: 100%;
+  position: fixed;
+  top: 50%;
+  left: 50%;
   max-width: 200px;
   display: flex;
   justify-content: center;
-  margin-bottom: 60px;
+  align-items: center;
+  z-index: 1;
+  transform: translate(-50%, -50%); /* 정확한 중앙 정렬 */
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  right: auto;
+  bottom: auto;
 }
 
 .character-image {
-  width: 100%;
+  /* width 제거 - 이미지 자체 크기 사용 */
   max-width: 150px;
+  width: auto;
   height: auto;
   object-fit: contain;
+  display: block;
+  margin: 0 auto;
+  /* 부모의 transform과 분리 */
   animation: float 3s ease-in-out infinite;
 }
 

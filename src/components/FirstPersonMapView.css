@@ -177,6 +177,7 @@
   justify-content: center;
   z-index: 10000;
   animation: fadeIn 0.3s ease-out;
+  box-sizing: border-box;
 }
 
 @keyframes fadeIn {
@@ -204,6 +205,8 @@
   max-width: 400px;
   width: 90%;
   animation: scaleIn 0.3s ease-out;
+  position: relative;
+  margin: auto;
 }
 
 @keyframes scaleIn {
@@ -470,10 +473,11 @@
 @keyframes float {
   0%,
   100% {
-    transform: translateX(-50%) translateY(0);
+    /* translateX는 기본 스타일에서 이미 설정되어 있으므로 translateY만 사용 */
+    transform: translateY(0);
   }
   50% {
-    transform: translateX(-50%) translateY(-3px);
+    transform: translateY(-3px);
   }
 }
 
@@ -709,10 +713,10 @@
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-/* 사진 찍기 버튼 */
+/* 사진 찍기 버튼 - 아래쪽으로 이동 및 색상 변경 */
 .camera-capture-btn {
   position: fixed;
-  bottom: 100px;
+  bottom: 40px;
   left: 50%;
   transform: translateX(-50%);
   width: 70px;
@@ -720,10 +724,10 @@
   border-radius: 50%;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.95),
-    rgba(240, 240, 240, 0.95)
+    rgba(33, 150, 243, 0.95),
+    rgba(25, 118, 210, 0.95)
   );
-  color: #333;
+  color: white;
   font-size: 32px;
   font-weight: bold;
   cursor: pointer;
@@ -731,7 +735,8 @@
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(33, 150, 243, 0.4),
+    0 0 0 4px rgba(255, 255, 255, 0.3);
   border: 3px solid rgba(255, 255, 255, 0.8);
   z-index: 1002;
   backdrop-filter: blur(10px);

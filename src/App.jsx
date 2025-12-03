@@ -38,6 +38,8 @@ function App() {
   const [showNextDestinationModal, setShowNextDestinationModal] =
     useState(false);
   const [showStopNavigationModal, setShowStopNavigationModal] = useState(false);
+  const [visitedDestinations, setVisitedDestinations] = useState(new Set()); // 방문한 시설 추적
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false); // 종료 확인 모달
 
   const firstPersonModeRef = useRef(firstPersonMode);
   const userPositionRef = useRef(userPosition);
@@ -71,12 +73,20 @@ function App() {
 
   // 인트로로 돌아가기
   const handleBackToIntro = useCallback(() => {
+    // 종료 확인 모달 표시
+    setShowExitConfirmModal(true);
+  }, []);
+
+  // 종료 확인 후 실제로 인트로로 돌아가기
+  const handleConfirmExit = useCallback(() => {
     setCurrentPage("intro");
     setInitialPanelOpen(false);
     setSelectedDestinations([]);
     setCurrentPath(null);
     setFirstPersonMode(false);
     setIsNavigating(false);
+    setVisitedDestinations(new Set()); // 방문 기록 초기화
+    setShowExitConfirmModal(false);
     window.history.pushState({ page: "intro" }, "", "/");
   }, []);
 
@@ -176,7 +186,7 @@ function App() {
     const interval = setInterval(() => {
       updateCongestionLevels();
       setCongestionUpdate((prev) => prev + 1);
-    }, 2000);
+    }, 20000); // 2초 -> 20초로 변경
 
     return () => clearInterval(interval);
   }, []);
@@ -354,8 +364,12 @@ function App() {
         setIsNavigating(false);
         setCurrentPath(null);
         setActiveRouteIndex(0);
+        // 현재 목적지를 방문한 시설에 추가
+        setVisitedDestinations((prev) => new Set([...prev, currentDest.id]));
         alert("🎉 모든 목적지에 도착했습니다!");
       }
+      // 현재 목적지를 방문한 시설에 추가
+      setVisitedDestinations((prev) => new Set([...prev, currentDest.id]));
       setShowNextDestinationModal(true);
       setTimeout(() => setShowNextDestinationModal(false), 1000);
     }
@@ -777,8 +791,14 @@ function App() {
                         }
                       }
                       setCongestionUpdate((prev) => prev + 1);
+                      // 방문한 시설 제외하고 재탐색
+                      const unvisitedDestinations = selectedDestinations.filter(
+                        (id) => !visitedDestinations.has(id)
+                      );
                       const newRecommendations = recommendRoute(
-                        selectedDestinations,
+                        unvisitedDestinations.length > 0
+                          ? unvisitedDestinations
+                          : selectedDestinations, // 방문하지 않은 시설이 없으면 전체 사용
                         userPosition,
                         attendingEvents,
                         forcedRecommendations
@@ -1022,7 +1042,7 @@ function App() {
                   setShowTravelConfirmModal(null);
                 }}
               >
-                🚶 경로 안내 시작
+                <span style={{ whiteSpace: "nowrap" }}>🚶 경로 안내 시작</span>
               </button>
             </div>
           </div>
@@ -1193,6 +1213,54 @@ function App() {
                 }}
               >
                 안내 종료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 종료 확인 모달 (리니워니) */}
+      {showExitConfirmModal && (
+        <div
+          className="event-modal-overlay"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="event-modal" onClick={(e) => e.stopPropagation()}>
+            <div style={{ textAlign: "center", marginBottom: "20px" }}>
+              <img
+                src="/image/rinni.png"
+                alt="RinniWinni"
+                style={{
+                  width: "120px",
+                  height: "auto",
+                  margin: "0 auto",
+                  display: "block",
+                }}
+              />
+            </div>
+            <h3>정말 나가시겠어요? 🥺</h3>
+            <div className="event-info">
+              <p>지금 나가시면 선택한 경로가 초기화됩니다.</p>
+              <p>계속 탐색하시겠어요?</p>
+            </div>
+            <div className="modal-buttons">
+              <button
+                className="btn-secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowExitConfirmModal(false);
+                }}
+              >
+                계속 탐색
+              </button>
+              <button
+                className="btn-primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleConfirmExit();
+                }}
+              >
+                나가기
               </button>
             </div>
           </div>

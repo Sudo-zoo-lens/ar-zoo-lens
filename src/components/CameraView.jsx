@@ -69,12 +69,13 @@ function CameraView({
           }
         }
 
-        // 안드로이드 크롬에서 더 안전한 설정으로 시작
+        // 카메라 최적화: 해상도 낮춰서 버벅거림 개선
         const constraints = {
           video: {
             facingMode: "environment",
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 },
+            width: { ideal: 640, max: 1280 }, // 해상도 낮춤
+            height: { ideal: 480, max: 720 }, // 해상도 낮춤
+            frameRate: { ideal: 24, max: 30 }, // 프레임레이트 제한
           },
           audio: false,
         };

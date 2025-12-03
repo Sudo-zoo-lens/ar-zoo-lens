@@ -673,6 +673,7 @@ function FirstPersonMapView({
       "3d-model-ocean-museum",
       "3d-model-tropical-museum",
       "3d-model-palgakjeong",
+      "3d-model-rinniwinni",
     ];
 
     layerIds.forEach((layerId) => {
@@ -781,6 +782,18 @@ function FirstPersonMapView({
       );
       map.current.addLayer(animalLayer);
     });
+
+    // 리니워니 모델을 캐릭터 위치에 배치 (움직이는 '나')
+    // 상대 위치 사용하여 캐릭터 위치를 따라감 (offset 0,0 = 캐릭터 정확한 위치)
+    const rinniWinniLayer = create3DLayer(
+      getModelPath("rinniwinni.glb"),
+      "3d-model-rinniwinni",
+      0, // offset longitude (0 = 캐릭터 위치)
+      0, // offset latitude (0 = 캐릭터 위치)
+      3, // scale
+      false // 상대 위치 사용 (characterPositionRef를 참조)
+    );
+    map.current.addLayer(rinniWinniLayer);
   };
 
   useEffect(() => {
@@ -823,6 +836,11 @@ function FirstPersonMapView({
       addMarkers();
     }
   }, [userPosition, addMarkers]);
+
+  // 리니워니 위치 업데이트를 위한 별도 useEffect
+  // Mapbox GL의 custom layer는 render 함수에서 동적으로 위치를 계산하므로
+  // characterPosition이 변경되면 자동으로 업데이트됨
+  // 단, 레이어의 render 함수에서 characterPositionRef를 참조하도록 해야 함
 
   if (!currentPath) {
     return null;
@@ -934,6 +952,31 @@ function FirstPersonMapView({
             </div>
           </div>
         )}
+        {/* 내위치로 돌아오는 버튼 */}
+        <button
+          className="my-location-btn"
+          onClick={() => {
+            const mainGate = zooAreas.find((area) => area.id === "main-gate");
+            if (mainGate && map.current) {
+              map.current.easeTo({
+                center: [mainGate.longitude, mainGate.latitude],
+                zoom: 19,
+                duration: 1000,
+              });
+              setCharacterPosition({
+                latitude: mainGate.latitude,
+                longitude: mainGate.longitude,
+              });
+              characterPositionRef.current = {
+                latitude: mainGate.latitude,
+                longitude: mainGate.longitude,
+              };
+            }
+          }}
+          title="내 위치로"
+        >
+          📍
+        </button>
       </div>
 
       {/* 카메라 버튼 */}
@@ -962,51 +1005,73 @@ function FirstPersonMapView({
       {cameraMode && (
         <button
           className="camera-capture-btn"
-          onClick={() => {
+          onClick={async () => {
             if (!videoRef.current || !arRendererRef.current) return;
 
-            const video = videoRef.current;
-            const canvas = arRendererRef.current.domElement;
+            try {
+              // 화면이 꺼지지 않도록 preventDefault
+              const video = videoRef.current;
+              const canvas = arRendererRef.current.domElement;
 
-            // 합성할 canvas 생성
-            const captureCanvas = document.createElement("canvas");
-            captureCanvas.width = video.videoWidth || window.innerWidth;
-            captureCanvas.height = video.videoHeight || window.innerHeight;
-            const ctx = captureCanvas.getContext("2d");
+              // 화면이 꺼지지 않도록 설정
+              if (navigator.wakeLock) {
+                try {
+                  await navigator.wakeLock.request("screen");
+                } catch (e) {
+                  console.warn("Wake lock not supported:", e);
+                }
+              }
 
-            // 비디오 프레임 그리기
-            ctx.drawImage(
-              video,
-              0,
-              0,
-              captureCanvas.width,
-              captureCanvas.height
-            );
+              // 합성할 canvas 생성
+              const captureCanvas = document.createElement("canvas");
+              captureCanvas.width = video.videoWidth || window.innerWidth;
+              captureCanvas.height = video.videoHeight || window.innerHeight;
+              const ctx = captureCanvas.getContext("2d");
 
-            // 3D 모델 canvas 그리기 (투명도 유지)
-            if (canvas) {
+              // 비디오 프레임 그리기
               ctx.drawImage(
-                canvas,
+                video,
                 0,
                 0,
                 captureCanvas.width,
                 captureCanvas.height
               );
-            }
 
-            // 다운로드
-            captureCanvas.toBlob((blob) => {
-              if (blob) {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `ar-photo-${Date.now()}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+              // 3D 모델 canvas 그리기 (투명도 유지)
+              if (canvas) {
+                ctx.drawImage(
+                  canvas,
+                  0,
+                  0,
+                  captureCanvas.width,
+                  captureCanvas.height
+                );
               }
-            }, "image/png");
+
+              // 다운로드
+              captureCanvas.toBlob(
+                (blob) => {
+                  if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `ar-photo-${Date.now()}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    // 저장 완료 알림
+                    alert("사진이 저장되었습니다!");
+                  }
+                },
+                "image/png",
+                0.95 // 품질 설정
+              );
+            } catch (error) {
+              console.error("사진 촬영 오류:", error);
+              alert("사진 촬영 중 오류가 발생했습니다.");
+            }
           }}
           title="사진 찍기"
         >
@@ -1020,7 +1085,8 @@ function FirstPersonMapView({
         style={cameraMode ? { display: "none" } : {}}
       />
 
-      {!cameraMode && <Joystick onMove={handleJoystickMove} />}
+      {/* 위치 조정 버튼 숨김 - 길안내 중에는 조이스틱 비활성화 */}
+      {/* {!cameraMode && <Joystick onMove={handleJoystickMove} />} */}
     </div>
   );
 }
