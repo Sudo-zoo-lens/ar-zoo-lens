@@ -92,18 +92,18 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
 
     // 동물 모델 로드 및 배치 (정문 근처)
     const animalOffsets = [
-      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 0.8 },
-      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 0.8 },
+      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 2.0 },
+      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 2.0 },
       {
         name: "green-dinosaur",
         offsetLng: 0.0001,
         offsetLat: -0.0001,
-        scale: 0.8,
+        scale: 2.0,
       },
-      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 0.8 },
-      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 0.8 },
-      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 0.8 },
-      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 0.8 },
+      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 2.0 },
+      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 2.0 },
+      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 2.0 },
+      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 2.0 },
     ];
 
     animalOffsets.forEach((animal) => {
@@ -112,7 +112,7 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         (gltf) => {
           try {
             const model = gltf.scene.clone();
-            const targetScale = animal.scale || 0.3; // 기본값 0.3
+            const targetScale = animal.scale || 2.0; // 기본값 2.0
 
             // 모델의 원본 크기 확인
             const originalBox = new THREE.Box3().setFromObject(model);
