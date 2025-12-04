@@ -116,6 +116,12 @@ function CameraView({
       } catch (err) {
         console.error("Camera error:", err);
 
+        // WebGL 컨텍스트 손실로 인한 에러는 무시 (카메라는 계속 작동)
+        if (err.message && err.message.includes("context")) {
+          console.warn("WebGL 관련 에러이지만 카메라는 계속 작동합니다");
+          return;
+        }
+
         // 사용자 친화적인 에러 메시지
         let errorMessage = "카메라에 접근할 수 없습니다.";
 

@@ -54,7 +54,16 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         preserveDrawingBuffer: true, // 사진 촬영을 위해 버퍼 보존
         failIfMajorPerformanceCaveat: false, // 성능이 낮아도 계속 진행
       });
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      // 화면 크기 설정 (모바일에서는 더 작게 제한)
+      const renderWidth =
+        isMobile || isLowEndDevice
+          ? Math.min(window.innerWidth, 640)
+          : window.innerWidth;
+      const renderHeight =
+        isMobile || isLowEndDevice
+          ? Math.min(window.innerHeight, 480)
+          : window.innerHeight;
+      renderer.setSize(renderWidth, renderHeight);
       // pixelRatio 제한하여 성능 향상 (모바일에서는 더 낮게)
       const maxPixelRatio = isMobile || isLowEndDevice ? 1 : 2;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
@@ -65,13 +74,32 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       // WebGL 컨텍스트 손실/복구 이벤트 처리
       const canvas = renderer.domElement;
       canvas.addEventListener("webglcontextlost", (event) => {
-        console.warn("WebGL 컨텍스트 손실됨");
+        console.warn(
+          "[AR3DModels] WebGL 컨텍스트 손실됨 - 카메라는 계속 작동합니다"
+        );
         event.preventDefault(); // 컨텍스트 복구 허용
+
+        // 애니메이션 루프 중단
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+
+        // 모든 모델 숨기기
+        Object.keys(modelsRef.current).forEach((key) => {
+          const modelData = modelsRef.current[key];
+          if (modelData && modelData.model) {
+            modelData.model.visible = false;
+          }
+        });
       });
 
       canvas.addEventListener("webglcontextrestored", () => {
-        console.log("WebGL 컨텍스트 복구됨");
-        // 컨텍스트 복구 후 재초기화 필요 시 여기서 처리
+        console.log("[AR3DModels] WebGL 컨텍스트 복구됨 - 렌더링 재개");
+        // 컨텍스트 복구 후 애니메이션 루프 재시작
+        if (animationFrameRef.current === null) {
+          animate();
+        }
       });
 
       // renderer 준비 완료 알림 (scene과 camera 정보도 함께 전달)
@@ -453,10 +481,38 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
           }
         }
 
-        rendererRef.current.render(sceneRef.current, cameraRef.current);
+        // WebGL 컨텍스트 상태 확인
+        const gl = rendererRef.current.getContext();
+        if (gl && gl.isContextLost && gl.isContextLost()) {
+          console.warn("[AR3DModels] WebGL 컨텍스트 손실됨, 렌더링 중단");
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+          }
+          return;
+        }
+
+        // 표시할 모델이 없으면 렌더링 최소화
+        if (cachedVisibleModels.length === 0) {
+          // 모델이 없어도 빈 화면을 렌더링 (카메라가 계속 작동하도록)
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        } else {
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        }
       } catch (err) {
         console.error("[AR3DModels] 애니메이션 루프 오류:", err);
-        // 에러가 발생해도 계속 실행
+        // WebGL 컨텍스트 손실 감지
+        if (err.message && err.message.includes("context")) {
+          console.warn(
+            "[AR3DModels] WebGL 컨텍스트 관련 오류, 애니메이션 중단"
+          );
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+          }
+          return;
+        }
+        // 다른 에러는 계속 실행 (카메라는 유지)
       }
     };
 
