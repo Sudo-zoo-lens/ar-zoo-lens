@@ -27,11 +27,12 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       sceneRef.current = scene;
 
       // Camera 설정 (AR용 원근 카메라)
+      // far plane을 150m로 제한하여 성능 향상
       const camera = new THREE.PerspectiveCamera(
         75,
         window.innerWidth / window.innerHeight,
         0.1,
-        1000
+        150 // 1000m -> 150m로 줄여서 성능 향상
       );
       camera.position.set(0, 1.6, 0); // 사용자 눈 높이
       cameraRef.current = camera;
@@ -41,6 +42,7 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         alpha: true,
         antialias: false, // 성능 향상을 위해 끄기
         powerPreference: "high-performance", // 고성능 모드
+        preserveDrawingBuffer: true, // 사진 촬영을 위해 버퍼 보존
       });
       renderer.setSize(window.innerWidth, window.innerHeight);
       // pixelRatio 제한하여 성능 향상 (최대 2)
@@ -49,9 +51,21 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       containerRef.current.appendChild(renderer.domElement);
       rendererRef.current = renderer;
 
-      // renderer 준비 완료 알림
+      // WebGL 컨텍스트 손실/복구 이벤트 처리
+      const canvas = renderer.domElement;
+      canvas.addEventListener("webglcontextlost", (event) => {
+        console.warn("WebGL 컨텍스트 손실됨");
+        event.preventDefault(); // 컨텍스트 복구 허용
+      });
+
+      canvas.addEventListener("webglcontextrestored", () => {
+        console.log("WebGL 컨텍스트 복구됨");
+        // 컨텍스트 복구 후 재초기화 필요 시 여기서 처리
+      });
+
+      // renderer 준비 완료 알림 (scene과 camera 정보도 함께 전달)
       if (onRendererReady) {
-        onRendererReady(renderer);
+        onRendererReady(renderer, scene, camera);
       }
     } catch (err) {
       console.error("AR3DModels 초기화 오류:", err);
@@ -94,18 +108,44 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
 
     // 동물 모델 로드 및 배치 (정문 근처)
     const animalOffsets = [
-      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 3.5 },
-      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 3.5 },
       {
-        name: "green-dinosaur",
-        offsetLng: 0.0001,
-        offsetLat: -0.0001,
+        name: "camel",
+        offsetLng: 0.00567590470046,
+        offsetLat: -0.000311138782496,
         scale: 3.5,
       },
-      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 3.5 },
-      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 3.5 },
-      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 3.5 },
-      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 3.5 },
+      {
+        name: "dolphin",
+        offsetLng: 0.0021115776083,
+        offsetLat: 0.00001113088987,
+        scale: 3.5,
+      },
+      {
+        name: "green-dinosaur",
+        offsetLng: 0.00338825234588,
+        offsetLat: -0.00015644021445,
+        scale: 3.5,
+      },
+      {
+        name: "meerkat",
+        offsetLng: 0.00676177629825,
+        offsetLat: -0.00076464766094,
+        scale: 3.5,
+      },
+      {
+        name: "orange-dinosaur",
+        offsetLng: 0.00348825234588,
+        offsetLat: -0.00015644021445,
+        scale: 3.5,
+      },
+      {
+        name: "sloth",
+        latitude: 37.549294535965856,
+        longitude: 127.07717505068533,
+        useAbsolutePosition: true,
+        scale: 3.5,
+      },
+      { name: "nubie", offsetLng: 0, offsetLat: -0.00015, scale: 3.5 },
     ];
 
     animalOffsets.forEach((animal) => {
@@ -165,18 +205,41 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
             );
 
             model.visible = false;
+            // 모델을 scene에 추가 (중복 추가 방지)
             if (sceneRef.current) {
-              sceneRef.current.add(model);
+              try {
+                // 이미 scene에 있으면 제거 후 다시 추가
+                if (sceneRef.current.children.includes(model)) {
+                  sceneRef.current.remove(model);
+                }
+                sceneRef.current.add(model);
+              } catch (e) {
+                console.warn(
+                  `모델 ${animal.name}를 scene에 추가하는 중 오류:`,
+                  e
+                );
+              }
             }
+
+            // 절대 좌표 사용 여부 확인
+            const modelLatitude =
+              animal.useAbsolutePosition && animal.latitude !== undefined
+                ? animal.latitude
+                : mainGate.latitude + (animal.offsetLat || 0);
+            const modelLongitude =
+              animal.useAbsolutePosition && animal.longitude !== undefined
+                ? animal.longitude
+                : mainGate.longitude + (animal.offsetLng || 0);
 
             modelsRef.current[animal.name] = {
               model,
               area: {
-                latitude: mainGate.latitude + animal.offsetLat,
-                longitude: mainGate.longitude + animal.offsetLng,
+                latitude: modelLatitude,
+                longitude: modelLongitude,
               },
               type: "animal",
               scale: targetScale, // scale 정보도 저장
+              isLoaded: true, // 로드 완료 플래그
             };
           } catch (err) {
             console.error(`동물 모델 처리 오류 (${animal.name}):`, err);
@@ -219,6 +282,12 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       return new THREE.Vector3(dx, 0, dz);
     };
 
+    // 거리 계산 및 모델 업데이트를 위한 throttle (성능 최적화)
+    let lastUpdateTime = 0;
+    const UPDATE_INTERVAL = 200; // 200ms마다 거리 계산 (5fps) - 더 안정적
+    let cachedVisibleModels = [];
+    let visibleModelKeys = new Set(); // 현재 표시 중인 모델 키 추적
+
     // 애니메이션 루프
     const animate = () => {
       try {
@@ -231,57 +300,135 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         if (!currentPos || !currentPos.latitude || !currentPos.longitude)
           return;
 
-        // 모든 모델의 거리 계산 및 정렬
-        const modelsWithDistance = Object.keys(modelsRef.current)
-          .map((key) => {
-            const modelData = modelsRef.current[key];
-            if (!modelData || !modelData.model) return null;
+        const now = Date.now();
+        const shouldUpdate = now - lastUpdateTime >= UPDATE_INTERVAL;
 
-            const distance = calculateDistance(
-              currentPos.latitude,
-              currentPos.longitude,
-              modelData.area.latitude,
-              modelData.area.longitude
-            );
+        // 거리 계산은 throttle하여 성능 향상
+        if (shouldUpdate) {
+          lastUpdateTime = now;
 
-            return {
-              key,
-              modelData,
-              distance,
-            };
-          })
-          .filter((item) => item !== null) // 모든 모델 거리 계산
-          .sort((a, b) => a.distance - b.distance); // 거리순 정렬
+          // 로드된 모델만 거리 계산 (성능 최적화)
+          const modelsWithDistance = Object.keys(modelsRef.current)
+            .map((key) => {
+              const modelData = modelsRef.current[key];
+              // 모델이 로드되지 않았으면 제외
+              if (!modelData || !modelData.model) {
+                return null;
+              }
 
-        // 모든 모델을 먼저 숨김
-        Object.keys(modelsRef.current).forEach((key) => {
-          const modelData = modelsRef.current[key];
-          if (modelData && modelData.model) {
-            modelData.model.visible = false;
-          }
-        });
+              // 모델이 scene에 없으면 추가 (안전장치)
+              if (
+                sceneRef.current &&
+                !sceneRef.current.children.includes(modelData.model)
+              ) {
+                try {
+                  sceneRef.current.add(modelData.model);
+                } catch (e) {
+                  console.warn(`모델 ${key}를 scene에 추가하는 중 오류:`, e);
+                  return null;
+                }
+              }
 
-        // 가장 가까운 2개 모델만 100m 이내에서 표시
-        const visibleModels = modelsWithDistance
-          .filter((item) => item.distance < 100) // 100m 이내만
-          .slice(0, 2); // 최대 2개만
+              const distance = calculateDistance(
+                currentPos.latitude,
+                currentPos.longitude,
+                modelData.area.latitude,
+                modelData.area.longitude
+              );
 
-        visibleModels.forEach(({ key, modelData, distance }) => {
-          const position = gpsTo3D(
-            modelData.area.latitude,
-            modelData.area.longitude,
-            currentPos.latitude,
-            currentPos.longitude
+              return {
+                key,
+                modelData,
+                distance,
+              };
+            })
+            .filter((item) => item !== null) // null 제거
+            .sort((a, b) => a.distance - b.distance); // 거리순 정렬
+
+          // 가장 가까운 2개 모델만 100m 이내에서 표시
+          const newVisibleModels = modelsWithDistance
+            .filter((item) => item.distance < 100) // 100m 이내만
+            .slice(0, 2); // 최대 2개만
+
+          // 새로 표시할 모델 키
+          const newVisibleKeys = new Set(
+            newVisibleModels.map((item) => item.key)
           );
 
-          modelData.model.position.copy(position);
-          modelData.model.visible = true;
+          // 이전에 표시되던 모델 중 더 이상 표시하지 않을 모델 숨김
+          visibleModelKeys.forEach((key) => {
+            if (!newVisibleKeys.has(key)) {
+              const modelData = modelsRef.current[key];
+              if (modelData && modelData.model) {
+                modelData.model.visible = false;
+              }
+            }
+          });
 
-          // 카메라를 향하도록 회전 (선택사항)
-          if (modelData.type === "animal") {
-            modelData.model.lookAt(cameraRef.current.position);
+          // 새로 표시할 모델만 업데이트
+          newVisibleModels.forEach(({ key, modelData, distance }) => {
+            // 모델이 scene에 없으면 다시 추가 (안전장치)
+            if (
+              sceneRef.current &&
+              !sceneRef.current.children.includes(modelData.model)
+            ) {
+              try {
+                sceneRef.current.add(modelData.model);
+              } catch (e) {
+                console.warn(`모델 ${key}를 scene에 다시 추가하는 중 오류:`, e);
+              }
+            }
+
+            const position = gpsTo3D(
+              modelData.area.latitude,
+              modelData.area.longitude,
+              currentPos.latitude,
+              currentPos.longitude
+            );
+
+            modelData.model.position.copy(position);
+            modelData.model.visible = true;
+
+            // 카메라를 향하도록 회전 (선택사항)
+            if (modelData.type === "animal") {
+              modelData.model.lookAt(cameraRef.current.position);
+            }
+          });
+
+          // 캐시 업데이트
+          cachedVisibleModels = newVisibleModels;
+          visibleModelKeys = newVisibleKeys;
+        } else {
+          // 업데이트 간격이 아니면 캐시된 모델만 위치 업데이트
+          if (cachedVisibleModels.length > 0) {
+            cachedVisibleModels.forEach(({ modelData }) => {
+              if (modelData && modelData.model) {
+                // 모델이 scene에 없으면 다시 추가
+                if (
+                  sceneRef.current &&
+                  !sceneRef.current.children.includes(modelData.model)
+                ) {
+                  try {
+                    sceneRef.current.add(modelData.model);
+                  } catch (e) {
+                    console.warn("모델을 scene에 다시 추가하는 중 오류:", e);
+                  }
+                }
+
+                // visible 상태 확인 및 위치 업데이트
+                if (modelData.model.visible) {
+                  const position = gpsTo3D(
+                    modelData.area.latitude,
+                    modelData.area.longitude,
+                    currentPos.latitude,
+                    currentPos.longitude
+                  );
+                  modelData.model.position.copy(position);
+                }
+              }
+            });
           }
-        });
+        }
 
         rendererRef.current.render(sceneRef.current, cameraRef.current);
       } catch (err) {

@@ -33,9 +33,14 @@ function FirstPersonMapView({
   const [, forceUpdate] = useState(0);
   const [characterPosition, setCharacterPosition] = useState(() => {
     const mainGate = zooAreas.find((area) => area.id === "main-gate");
-    return mainGate
+    const initialPos = mainGate
       ? { latitude: mainGate.latitude, longitude: mainGate.longitude }
-      : userPosition;
+      : userPosition || { latitude: 37.549544, longitude: 127.076119 };
+    // 유효성 검사
+    if (isNaN(initialPos.latitude) || isNaN(initialPos.longitude)) {
+      return { latitude: 37.549544, longitude: 127.076119 }; // 기본값
+    }
+    return initialPos;
   });
   const characterPositionRef = useRef(characterPosition);
   const nubieLayerRef = useRef(null);
@@ -51,6 +56,8 @@ function FirstPersonMapView({
   const [cameraMode, setCameraMode] = useState(false);
   const videoRef = useRef(null);
   const arRendererRef = useRef(null);
+  const arSceneRef = useRef(null);
+  const arCameraRef = useRef(null);
 
   // activeRouteIndex가 변경되면 도착 모달 플래그 리셋 (단, 타이머 실행 중이 아닐 때만)
   useEffect(() => {
@@ -177,9 +184,18 @@ function FirstPersonMapView({
     const newCenter = [currentCenter.lng + moveX, currentCenter.lat - moveY];
 
     // 캐릭터 위치도 함께 업데이트
+    const newLat = currentCenter.lat - moveY;
+    const newLng = currentCenter.lng + moveX;
+
+    // NaN 체크
+    if (isNaN(newLat) || isNaN(newLng)) {
+      console.warn("Invalid position calculated, skipping update");
+      return;
+    }
+
     const newCharacterPosition = {
-      latitude: currentCenter.lat - moveY,
-      longitude: currentCenter.lng + moveX,
+      latitude: newLat,
+      longitude: newLng,
     };
     setCharacterPosition(newCharacterPosition);
     characterPositionRef.current = newCharacterPosition;
@@ -206,9 +222,20 @@ function FirstPersonMapView({
       const newCenter = [currentCenter.lng + moveX, currentCenter.lat - moveY];
 
       // 캐릭터 위치도 함께 업데이트
+      const newLat = currentCenter.lat - moveY;
+      const newLng = currentCenter.lng + moveX;
+
+      // NaN 체크
+      if (isNaN(newLat) || isNaN(newLng)) {
+        console.warn(
+          "Invalid position calculated in interval, skipping update"
+        );
+        return;
+      }
+
       const newCharPos = {
-        latitude: currentCenter.lat - moveY,
-        longitude: currentCenter.lng + moveX,
+        latitude: newLat,
+        longitude: newLng,
       };
       setCharacterPosition(newCharPos);
       characterPositionRef.current = newCharPos;
@@ -597,13 +624,32 @@ function FirstPersonMapView({
           // 절대 위치 사용 여부에 따라 위치 계산
           let modelOrigin;
           if (this.useAbsolutePosition) {
+            // 절대 위치 사용 시 유효성 검사
+            if (isNaN(this.longitude) || isNaN(this.latitude)) {
+              return; // 유효하지 않은 좌표면 렌더링하지 않음
+            }
             modelOrigin = [this.longitude, this.latitude];
           } else {
             const currentCharPos = characterPositionRef.current;
+            // characterPosition이 유효한지 확인
+            if (
+              !currentCharPos ||
+              isNaN(currentCharPos.longitude) ||
+              isNaN(currentCharPos.latitude) ||
+              isNaN(this.longitude) ||
+              isNaN(this.latitude)
+            ) {
+              return; // 유효하지 않은 좌표면 렌더링하지 않음
+            }
             modelOrigin = [
               currentCharPos.longitude + this.longitude,
               currentCharPos.latitude + this.latitude,
             ];
+          }
+
+          // 최종 좌표 유효성 검사
+          if (isNaN(modelOrigin[0]) || isNaN(modelOrigin[1])) {
+            return; // 유효하지 않은 좌표면 렌더링하지 않음
           }
 
           const modelAsMercatorCoordinate =
@@ -757,28 +803,64 @@ function FirstPersonMapView({
 
     // 동물 모델들을 정문 근처에 배치 (정문 위치 기준으로 작은 오프셋)
     const animalOffsets = [
-      { name: "camel", offsetLng: 0.0001, offsetLat: 0.0001, scale: 5 },
-      { name: "dolphin", offsetLng: -0.0001, offsetLat: 0.0001, scale: 5 },
       {
-        name: "green-dinosaur",
-        offsetLng: 0.0001,
-        offsetLat: -0.0001,
+        name: "camel",
+        offsetLng: 0.00567590470046,
+        offsetLat: -0.000311138782496,
         scale: 5,
       },
-      { name: "meerkat", offsetLng: -0.0001, offsetLat: -0.0001, scale: 1 }, // 미어켓 크기 줄임
-      { name: "orange-dinosaur", offsetLng: 0.00015, offsetLat: 0, scale: 5 },
-      { name: "sloth", offsetLng: -0.00015, offsetLat: 0, scale: 5 },
-      { name: "nubie", offsetLng: 0, offsetLat: 0.00015, scale: 5 },
+      {
+        name: "dolphin",
+        offsetLng: 0.0021115776083,
+        offsetLat: 0.00001113088987,
+        scale: 5,
+      },
+      {
+        name: "green-dinosaur",
+        offsetLng: 0.00338825234588,
+        offsetLat: -0.00015644021445,
+        scale: 5,
+      },
+      {
+        name: "meerkat",
+        offsetLng: 0.00676177629825,
+        offsetLat: -0.00076464766094,
+        scale: 1,
+      }, // 미어켓 크기 줄임
+      {
+        name: "orange-dinosaur",
+        offsetLng: 0.00348825234588,
+        offsetLat: -0.00015644021445,
+        scale: 5,
+      },
+      {
+        name: "sloth",
+        latitude: 37.549294535965856,
+        longitude: 127.07717505068533,
+        useAbsolutePosition: true,
+        scale: 5,
+      },
+      { name: "nubie", offsetLng: 0, offsetLat: -0.00015, scale: 5 },
     ];
 
     animalOffsets.forEach((animal) => {
+      // 절대 좌표 사용 여부 확인
+      const animalLongitude =
+        animal.useAbsolutePosition && animal.longitude !== undefined
+          ? animal.longitude
+          : mainGate.longitude + (animal.offsetLng || 0);
+      const animalLatitude =
+        animal.useAbsolutePosition && animal.latitude !== undefined
+          ? animal.latitude
+          : mainGate.latitude + (animal.offsetLat || 0);
+
       const animalLayer = create3DLayer(
         getModelPath(`${animal.name}.glb`),
         `3d-model-${animal.name}`,
-        mainGate.longitude + animal.offsetLng,
-        mainGate.latitude + animal.offsetLat,
+        animalLongitude,
+        animalLatitude,
         animal.scale || 5, // 각 동물의 scale 사용
-        true
+        animal.useAbsolutePosition || false
       );
       map.current.addLayer(animalLayer);
     });
@@ -901,8 +983,10 @@ function FirstPersonMapView({
             <AR3DModels
               userPosition={characterPosition}
               characterPosition={characterPosition}
-              onRendererReady={(renderer) => {
+              onRendererReady={(renderer, scene, camera) => {
                 arRendererRef.current = renderer;
+                arSceneRef.current = scene;
+                arCameraRef.current = camera;
               }}
             />
           )}
@@ -1009,9 +1093,9 @@ function FirstPersonMapView({
             if (!videoRef.current || !arRendererRef.current) return;
 
             try {
-              // 화면이 꺼지지 않도록 preventDefault
               const video = videoRef.current;
-              const canvas = arRendererRef.current.domElement;
+              const renderer = arRendererRef.current;
+              const glCanvas = renderer.domElement;
 
               // 화면이 꺼지지 않도록 설정
               if (navigator.wakeLock) {
@@ -1022,13 +1106,25 @@ function FirstPersonMapView({
                 }
               }
 
+              // 모델이 확실히 렌더링되도록 강제 렌더링
+              if (renderer && arSceneRef.current && arCameraRef.current) {
+                renderer.render(arSceneRef.current, arCameraRef.current);
+              }
+
+              // 렌더링 완료 대기
+              await new Promise((resolve) => setTimeout(resolve, 150));
+
+              // 비디오 크기 가져오기
+              const videoWidth = video.videoWidth || window.innerWidth;
+              const videoHeight = video.videoHeight || window.innerHeight;
+
               // 합성할 canvas 생성
               const captureCanvas = document.createElement("canvas");
-              captureCanvas.width = video.videoWidth || window.innerWidth;
-              captureCanvas.height = video.videoHeight || window.innerHeight;
+              captureCanvas.width = videoWidth;
+              captureCanvas.height = videoHeight;
               const ctx = captureCanvas.getContext("2d");
 
-              // 비디오 프레임 그리기
+              // 비디오 프레임 그리기 (배경)
               ctx.drawImage(
                 video,
                 0,
@@ -1037,40 +1133,180 @@ function FirstPersonMapView({
                 captureCanvas.height
               );
 
-              // 3D 모델 canvas 그리기 (투명도 유지)
-              if (canvas) {
-                ctx.drawImage(
-                  canvas,
-                  0,
-                  0,
-                  captureCanvas.width,
-                  captureCanvas.height
-                );
+              // WebGL canvas를 이미지로 변환하여 그리기
+              if (glCanvas && glCanvas.width > 0 && glCanvas.height > 0) {
+                try {
+                  // WebGL 컨텍스트 상태 확인 (renderer를 통해)
+                  let isContextLost = false;
+                  if (renderer && renderer.getContext) {
+                    try {
+                      const gl = renderer.getContext();
+                      if (gl && gl.isContextLost && gl.isContextLost()) {
+                        isContextLost = true;
+                      }
+                    } catch (e) {
+                      // getContext 실패 시 무시
+                    }
+                  }
+
+                  if (isContextLost) {
+                    console.error("WebGL 컨텍스트가 손실되었습니다.");
+                    alert(
+                      "WebGL 컨텍스트가 손실되었습니다. 페이지를 새로고침해주세요."
+                    );
+                    return;
+                  }
+
+                  // preserveDrawingBuffer가 true이므로 직접 drawImage 사용
+                  ctx.save();
+                  ctx.globalCompositeOperation = "source-over";
+
+                  // WebGL canvas를 전체 화면에 맞춰 그리기
+                  ctx.drawImage(
+                    glCanvas,
+                    0,
+                    0,
+                    captureCanvas.width,
+                    captureCanvas.height
+                  );
+
+                  ctx.restore();
+                } catch (drawError) {
+                  console.warn("WebGL canvas 직접 그리기 실패:", drawError);
+
+                  // 대체 방법: toDataURL 사용 (preserveDrawingBuffer가 true일 때 작동)
+                  try {
+                    const dataURL = glCanvas.toDataURL("image/png");
+                    if (dataURL && dataURL !== "data:,") {
+                      const img = new Image();
+                      img.onload = () => {
+                        ctx.globalCompositeOperation = "source-over";
+                        ctx.drawImage(
+                          img,
+                          0,
+                          0,
+                          captureCanvas.width,
+                          captureCanvas.height
+                        );
+
+                        // 이미지 로드 후 다운로드
+                        captureCanvas.toBlob(
+                          (blob) => {
+                            if (blob) {
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `ar-photo-${Date.now()}.png`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                              alert("사진이 저장되었습니다!");
+                            } else {
+                              alert("사진 저장에 실패했습니다.");
+                            }
+                          },
+                          "image/png",
+                          0.95
+                        );
+                      };
+                      img.onerror = () => {
+                        console.error("이미지 로드 실패");
+                        // 이미지 로드 실패 시 직접 drawImage 시도
+                        try {
+                          ctx.globalCompositeOperation = "source-over";
+                          ctx.drawImage(
+                            glCanvas,
+                            0,
+                            0,
+                            captureCanvas.width,
+                            captureCanvas.height
+                          );
+
+                          // 다운로드
+                          captureCanvas.toBlob(
+                            (blob) => {
+                              if (blob) {
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `ar-photo-${Date.now()}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                alert("사진이 저장되었습니다!");
+                              } else {
+                                alert("사진 저장에 실패했습니다.");
+                              }
+                            },
+                            "image/png",
+                            0.95
+                          );
+                        } catch (fallbackError) {
+                          console.error("대체 방법도 실패:", fallbackError);
+                          alert("사진 촬영 중 오류가 발생했습니다.");
+                        }
+                      };
+                      img.src = dataURL;
+                      return; // 비동기 처리이므로 여기서 종료
+                    } else {
+                      throw new Error("toDataURL이 빈 데이터를 반환했습니다.");
+                    }
+                  } catch (toDataURLError) {
+                    console.warn(
+                      "toDataURL 실패, 직접 drawImage 시도:",
+                      toDataURLError
+                    );
+                    // 직접 drawImage로 다운로드
+                    try {
+                      ctx.globalCompositeOperation = "source-over";
+                      ctx.drawImage(
+                        glCanvas,
+                        0,
+                        0,
+                        captureCanvas.width,
+                        captureCanvas.height
+                      );
+                    } catch (drawError) {
+                      console.error("drawImage도 실패:", drawError);
+                      alert("사진 촬영 중 오류가 발생했습니다.");
+                      return;
+                    }
+                  }
+                }
               }
 
-              // 다운로드
-              captureCanvas.toBlob(
-                (blob) => {
-                  if (blob) {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `ar-photo-${Date.now()}.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+              // WebGL canvas를 직접 그렸을 때만 다운로드 (toDataURL 사용 시에는 이미지 로드 콜백에서 처리)
+              // toDataURL이 비동기로 처리되는 경우를 제외하고는 여기서 다운로드
+              // getContext를 호출하지 않고 바로 다운로드 (이미 drawImage로 그렸으므로)
+              if (glCanvas && glCanvas.width > 0 && glCanvas.height > 0) {
+                // 다운로드 (toDataURL이 사용되지 않은 경우)
+                captureCanvas.toBlob(
+                  (blob) => {
+                    if (blob) {
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `ar-photo-${Date.now()}.png`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
 
-                    // 저장 완료 알림
-                    alert("사진이 저장되었습니다!");
-                  }
-                },
-                "image/png",
-                0.95 // 품질 설정
-              );
+                      // 저장 완료 알림
+                      alert("사진이 저장되었습니다!");
+                    } else {
+                      alert("사진 저장에 실패했습니다.");
+                    }
+                  },
+                  "image/png",
+                  0.95 // 품질 설정
+                );
+              }
             } catch (error) {
               console.error("사진 촬영 오류:", error);
-              alert("사진 촬영 중 오류가 발생했습니다.");
+              alert("사진 촬영 중 오류가 발생했습니다: " + error.message);
             }
           }}
           title="사진 찍기"
@@ -1085,8 +1321,8 @@ function FirstPersonMapView({
         style={cameraMode ? { display: "none" } : {}}
       />
 
-      {/* 위치 조정 버튼 숨김 - 길안내 중에는 조이스틱 비활성화 */}
-      {/* {!cameraMode && <Joystick onMove={handleJoystickMove} />} */}
+      {/* 조이스틱 - 카메라 모드가 아닐 때만 표시 */}
+      {!cameraMode && <Joystick onMove={handleJoystickMove} />}
     </div>
   );
 }

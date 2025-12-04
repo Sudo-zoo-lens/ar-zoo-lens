@@ -35,7 +35,7 @@ function Joystick({ onMove }) {
 
     // 조이스틱 범위 제한 (원형)
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const maxDistance = rect.width / 2 - 20; // 여백 고려
+    const maxDistance = rect.width / 2 - 10; // 여백 고려 (작은 크기에 맞게 조정)
 
     let x = deltaX;
     let y = deltaY;
