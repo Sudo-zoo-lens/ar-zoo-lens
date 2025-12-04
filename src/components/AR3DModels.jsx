@@ -47,12 +47,17 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         (navigator.deviceMemory && navigator.deviceMemory <= 4);
 
       // Renderer 설정 (성능 최적화)
+      // preserveDrawingBuffer는 메모리를 2배로 사용하므로 모바일에서는 조건부 사용
+      // 배포 환경에서 메모리 부족으로 컨텍스트 손실 방지
+      const usePreserveBuffer = !isMobile && !isLowEndDevice;
       const renderer = new THREE.WebGLRenderer({
         alpha: true,
         antialias: false, // 성능 향상을 위해 끄기
         powerPreference: isMobile ? "default" : "high-performance", // 모바일에서는 기본 모드
-        preserveDrawingBuffer: true, // 사진 촬영을 위해 버퍼 보존
+        preserveDrawingBuffer: usePreserveBuffer, // 모바일에서는 false로 메모리 절약
         failIfMajorPerformanceCaveat: false, // 성능이 낮아도 계속 진행
+        depth: true, // 깊이 버퍼 사용
+        stencil: false, // 스텐실 버퍼 비활성화로 메모리 절약
       });
       // 화면 크기 설정 (모바일에서는 더 작게 제한)
       const renderWidth =
@@ -187,7 +192,13 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       { name: "nubie", offsetLng: 0, offsetLat: -0.00015, scale: 3.5 },
     ];
 
-    animalOffsets.forEach((animal) => {
+    // 모델 로딩을 순차적으로 처리하여 메모리 부하 분산 (배포 환경 최적화)
+    const loadModelSequentially = async (animal, index) => {
+      // 모델 로딩 간격을 두어 메모리 부하 분산
+      if (index > 0 && (isMobile || isLowEndDevice)) {
+        await new Promise((resolve) => setTimeout(resolve, 200 * index));
+      }
+
       loader.load(
         getModelPath(`${animal.name}.glb`),
         (gltf) => {
@@ -195,53 +206,53 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
             const model = gltf.scene.clone();
             const targetScale = animal.scale || 3.5; // 기본값 3.5
 
-            // 모델의 원본 크기 확인
-            const originalBox = new THREE.Box3().setFromObject(model);
-            const originalSize = originalBox.getSize(new THREE.Vector3());
-            const maxOriginalSize = Math.max(
-              originalSize.x,
-              originalSize.y,
-              originalSize.z
-            );
+            // 모바일에서는 geometry 스케일링 대신 scale 사용 (메모리 절약)
+            if (isMobile || isLowEndDevice) {
+              // scale 사용 (메모리 효율적)
+              model.scale.set(targetScale, targetScale, targetScale);
+            } else {
+              // 데스크톱에서는 geometry 스케일링 (더 정확)
+              // 모든 자식 객체의 scale을 1로 리셋
+              model.traverse((child) => {
+                if (child.isMesh || child.isGroup || child.isObject3D) {
+                  child.scale.set(1, 1, 1);
+                }
+              });
+              model.scale.set(1, 1, 1);
 
-            // 모든 자식 객체의 scale을 1로 리셋
-            model.traverse((child) => {
-              if (child.isMesh || child.isGroup || child.isObject3D) {
-                child.scale.set(1, 1, 1);
-              }
-            });
-            model.scale.set(1, 1, 1);
-
-            // geometry를 직접 스케일링
-            model.traverse((child) => {
-              if (child.isMesh && child.geometry) {
-                // geometry를 복사해서 원본을 보존
-                if (!child.geometry.userData.original) {
-                  child.geometry.userData.original = true;
-                  // geometry의 모든 버텍스를 스케일링
-                  const positions = child.geometry.attributes.position;
-                  if (positions) {
-                    for (let i = 0; i < positions.count; i++) {
-                      positions.setX(i, positions.getX(i) * targetScale);
-                      positions.setY(i, positions.getY(i) * targetScale);
-                      positions.setZ(i, positions.getZ(i) * targetScale);
+              // geometry를 직접 스케일링
+              model.traverse((child) => {
+                if (child.isMesh && child.geometry) {
+                  // geometry를 복사해서 원본을 보존
+                  if (!child.geometry.userData.original) {
+                    child.geometry.userData.original = true;
+                    // geometry의 모든 버텍스를 스케일링
+                    const positions = child.geometry.attributes.position;
+                    if (positions) {
+                      for (let i = 0; i < positions.count; i++) {
+                        positions.setX(i, positions.getX(i) * targetScale);
+                        positions.setY(i, positions.getY(i) * targetScale);
+                        positions.setZ(i, positions.getZ(i) * targetScale);
+                      }
+                      positions.needsUpdate = true;
+                      child.geometry.computeBoundingBox();
+                      child.geometry.computeBoundingSphere();
                     }
-                    positions.needsUpdate = true;
-                    child.geometry.computeBoundingBox();
-                    child.geometry.computeBoundingSphere();
                   }
                 }
-              }
-            });
+              });
+            }
 
-            // 최종 크기 확인
-            const finalBox = new THREE.Box3().setFromObject(model);
-            const finalSize = finalBox.getSize(new THREE.Vector3());
-            const maxFinalSize = Math.max(
-              finalSize.x,
-              finalSize.y,
-              finalSize.z
-            );
+            // 최종 크기 확인 (모바일에서는 생략하여 메모리 절약)
+            if (!isMobile && !isLowEndDevice) {
+              const finalBox = new THREE.Box3().setFromObject(model);
+              const finalSize = finalBox.getSize(new THREE.Vector3());
+              const maxFinalSize = Math.max(
+                finalSize.x,
+                finalSize.y,
+                finalSize.z
+              );
+            }
 
             model.visible = false;
             // 모델을 scene에 추가 (중복 추가 방지)
@@ -270,6 +281,28 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
                 ? animal.longitude
                 : mainGate.longitude + (animal.offsetLng || 0);
 
+            // 텍스처 최적화 (모바일)
+            if (isMobile || isLowEndDevice) {
+              model.traverse((child) => {
+                if (child.isMesh && child.material) {
+                  // 텍스처 크기 제한
+                  if (child.material.map) {
+                    child.material.map.minFilter = THREE.LinearFilter;
+                    child.material.map.magFilter = THREE.LinearFilter;
+                  }
+                  // 재질 최적화
+                  if (Array.isArray(child.material)) {
+                    child.material.forEach((mat) => {
+                      if (mat.map) {
+                        mat.map.minFilter = THREE.LinearFilter;
+                        mat.map.magFilter = THREE.LinearFilter;
+                      }
+                    });
+                  }
+                }
+              });
+            }
+
             modelsRef.current[animal.name] = {
               model,
               area: {
@@ -282,6 +315,7 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
             };
           } catch (err) {
             console.error(`동물 모델 처리 오류 (${animal.name}):`, err);
+            return; // 에러 발생 시 이 모델만 건너뛰기
           }
         },
         (progress) => {
@@ -294,11 +328,6 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
             error
           );
           console.error(`[AR3DModels] 시도한 경로: ${modelPath}`);
-          console.error(`[AR3DModels] 에러 상세:`, {
-            message: error?.message,
-            stack: error?.stack,
-            type: error?.type,
-          });
           // 에러가 발생해도 앱이 크래시되지 않도록 계속 진행
           setError((prev) =>
             prev
@@ -307,6 +336,11 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
           );
         }
       );
+    };
+
+    // 모델을 순차적으로 로드
+    animalOffsets.forEach((animal, index) => {
+      loadModelSequentially(animal, index);
     });
 
     // GPS 좌표를 3D 위치로 변환하는 함수
