@@ -37,16 +37,27 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       camera.position.set(0, 1.6, 0); // 사용자 눈 높이
       cameraRef.current = camera;
 
+      // 모바일 기기 감지
+      const isMobile =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        );
+      const isLowEndDevice =
+        navigator.hardwareConcurrency <= 4 ||
+        (navigator.deviceMemory && navigator.deviceMemory <= 4);
+
       // Renderer 설정 (성능 최적화)
       const renderer = new THREE.WebGLRenderer({
         alpha: true,
         antialias: false, // 성능 향상을 위해 끄기
-        powerPreference: "high-performance", // 고성능 모드
+        powerPreference: isMobile ? "default" : "high-performance", // 모바일에서는 기본 모드
         preserveDrawingBuffer: true, // 사진 촬영을 위해 버퍼 보존
+        failIfMajorPerformanceCaveat: false, // 성능이 낮아도 계속 진행
       });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      // pixelRatio 제한하여 성능 향상 (최대 2)
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      // pixelRatio 제한하여 성능 향상 (모바일에서는 더 낮게)
+      const maxPixelRatio = isMobile || isLowEndDevice ? 1 : 2;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
       renderer.shadowMap.enabled = false; // 그림자 비활성화로 성능 향상
       containerRef.current.appendChild(renderer.domElement);
       rendererRef.current = renderer;
@@ -282,9 +293,19 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
       return new THREE.Vector3(dx, 0, dz);
     };
 
+    // 모바일 기기 감지
+    const isMobile =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      );
+    const isLowEndDevice =
+      navigator.hardwareConcurrency <= 4 ||
+      (navigator.deviceMemory && navigator.deviceMemory <= 4);
+
     // 거리 계산 및 모델 업데이트를 위한 throttle (성능 최적화)
     let lastUpdateTime = 0;
-    const UPDATE_INTERVAL = 200; // 200ms마다 거리 계산 (5fps) - 더 안정적
+    // 모바일에서는 더 긴 간격으로 업데이트
+    const UPDATE_INTERVAL = isMobile || isLowEndDevice ? 500 : 200; // 모바일: 500ms, 데스크톱: 200ms
     let cachedVisibleModels = [];
     let visibleModelKeys = new Set(); // 현재 표시 중인 모델 키 추적
 
@@ -345,10 +366,12 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
             .filter((item) => item !== null) // null 제거
             .sort((a, b) => a.distance - b.distance); // 거리순 정렬
 
-          // 가장 가까운 2개 모델만 100m 이내에서 표시
+          // 모바일에서는 1개만, 데스크톱에서는 2개 표시
+          const maxModels = isMobile || isLowEndDevice ? 1 : 2;
+          // 가장 가까운 모델만 100m 이내에서 표시
           const newVisibleModels = modelsWithDistance
             .filter((item) => item.distance < 100) // 100m 이내만
-            .slice(0, 2); // 최대 2개만
+            .slice(0, maxModels); // 모바일: 1개, 데스크톱: 2개
 
           // 새로 표시할 모델 키
           const newVisibleKeys = new Set(

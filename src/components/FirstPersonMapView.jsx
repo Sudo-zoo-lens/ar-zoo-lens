@@ -32,18 +32,49 @@ function FirstPersonMapView({
   const moveInterval = useRef(null);
   const [, forceUpdate] = useState(0);
   const [characterPosition, setCharacterPosition] = useState(() => {
-    const mainGate = zooAreas.find((area) => area.id === "main-gate");
-    const initialPos = mainGate
-      ? { latitude: mainGate.latitude, longitude: mainGate.longitude }
-      : userPosition || { latitude: 37.549544, longitude: 127.076119 };
+    // 실제 사용자 위치를 우선 사용
+    const initialPos = userPosition;
     // 유효성 검사
-    if (isNaN(initialPos.latitude) || isNaN(initialPos.longitude)) {
-      return { latitude: 37.549544, longitude: 127.076119 }; // 기본값
+    if (
+      !initialPos ||
+      isNaN(initialPos.latitude) ||
+      isNaN(initialPos.longitude)
+    ) {
+      // GPS 위치가 없으면 null 반환 (GPS 위치를 기다림)
+      return null;
     }
     return initialPos;
   });
   const characterPositionRef = useRef(characterPosition);
   const nubieLayerRef = useRef(null);
+
+  // GPS 위치가 업데이트되면 characterPosition도 함께 업데이트
+  useEffect(() => {
+    if (userPosition && userPosition.latitude && userPosition.longitude) {
+      // 조이스틱으로 이동 중이 아닐 때만 GPS 위치로 업데이트
+      // (조이스틱 이동 중에는 GPS 업데이트가 방해되지 않도록)
+      if (!moveInterval.current) {
+        const newPos = {
+          latitude: userPosition.latitude,
+          longitude: userPosition.longitude,
+        };
+
+        // 위치가 실제로 변경되었을 때만 업데이트 (무한 루프 방지)
+        const currentPos = characterPositionRef.current;
+        if (
+          !currentPos ||
+          Math.abs(currentPos.latitude - newPos.latitude) > 0.000001 ||
+          Math.abs(currentPos.longitude - newPos.longitude) > 0.000001
+        ) {
+          setCharacterPosition(newPos);
+          characterPositionRef.current = newPos;
+        }
+      }
+    } else if (!characterPositionRef.current) {
+      // characterPosition이 null이고 GPS 위치도 없으면 GPS를 기다림
+      console.log("GPS 위치를 기다리는 중...");
+    }
+  }, [userPosition]); // characterPosition을 의존성에서 제거하여 무한 루프 방지
 
   // characterPosition이 변경될 때마다 ref 업데이트
   useEffect(() => {
@@ -250,11 +281,12 @@ function FirstPersonMapView({
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
-    // 정문 위치로 시작
-    const mainGate = zooAreas.find((area) => area.id === "main-gate");
-    const startPosition = mainGate
-      ? { latitude: mainGate.latitude, longitude: mainGate.longitude }
-      : userPosition;
+    // 실제 사용자 위치로 시작 (GPS 위치 필수)
+    if (!userPosition || !userPosition.latitude || !userPosition.longitude) {
+      console.warn("GPS 위치가 없어 지도를 초기화할 수 없습니다.");
+      return;
+    }
+    const startPosition = userPosition;
 
     // 사용자 위치 중심으로 지도 초기화
     const bounds = new mapboxgl.LngLatBounds();
@@ -423,6 +455,17 @@ function FirstPersonMapView({
     // 경로에 포함된 장소들만 표시
     if (currentPath && currentPath.areas) {
       currentPath.areas.forEach((area, index) => {
+        // area의 필수 속성 확인 및 기본값 설정
+        if (!area.latitude || !area.longitude) {
+          console.warn("경로 지점에 좌표가 없습니다:", area);
+          return;
+        }
+
+        // name이 없으면 기본값 설정
+        if (!area.name) {
+          area.name = area.id === "current-position" ? "현재 위치" : "목적지";
+        }
+
         const distance = Math.round(
           calculateDistance(
             userPosition.latitude,
@@ -440,6 +483,12 @@ function FirstPersonMapView({
         el.className = `custom-marker ${isDestination ? "destination" : ""} ${
           isStart ? "start" : ""
         }`;
+
+        // name이 없으면 기본값 설정
+        const displayName =
+          area.name ||
+          (area.id === "current-position" ? "현재 위치" : "목적지");
+
         el.innerHTML = `
           <div class="marker-container">
             ${
@@ -452,7 +501,7 @@ function FirstPersonMapView({
             <div class="marker-pin" style="background-color: ${
               area.color || color
             }">
-              <span class="marker-emoji">${area.emoji}</span>
+              <span class="marker-emoji">${area.emoji || "📍"}</span>
               ${
                 isDestination
                   ? '<div class="destination-indicator">🎯</div>'
@@ -460,12 +509,24 @@ function FirstPersonMapView({
               }
             </div>
             <div class="marker-shadow"></div>
+            <div class="marker-label" style="color: white; font-size: 12px; text-align: center; margin-top: 5px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
+              ${displayName}
+            </div>
           </div>
         `;
 
         const marker = new mapboxgl.Marker(el)
           .setLngLat([area.longitude, area.latitude])
           .addTo(map.current);
+
+        // 마커에 Popup 추가 (name이 있는 경우에만)
+        if (area.name) {
+          const popup = new mapboxgl.Popup({
+            offset: 25,
+            closeOnClick: false,
+          }).setText(area.name);
+          marker.setPopup(popup);
+        }
 
         markers.current.push(marker);
       });
@@ -599,9 +660,14 @@ function FirstPersonMapView({
               this.scene.add(this.model);
               map.triggerRepaint();
             },
-            undefined,
+            (progress) => {
+              // 로딩 진행 상황 (선택사항)
+            },
             (error) => {
-              console.error(`3D 모델 로딩 오류 (${modelPath}):`, error);
+              console.error(
+                `3D 모델 로딩 오류 (${layerId}, ${modelPath}):`,
+                error
+              );
             }
           );
 
@@ -840,7 +906,7 @@ function FirstPersonMapView({
         useAbsolutePosition: true,
         scale: 5,
       },
-      { name: "nubie", offsetLng: 0, offsetLat: -0.00015, scale: 5 },
+      { name: "nubie", offsetLng: 0.0002, offsetLat: 0.001, scale: 5 }, // 북쪽으로 이동
     ];
 
     animalOffsets.forEach((animal) => {
@@ -853,6 +919,19 @@ function FirstPersonMapView({
         animal.useAbsolutePosition && animal.latitude !== undefined
           ? animal.latitude
           : mainGate.latitude + (animal.offsetLat || 0);
+
+      // 디버깅: nubie 모델 정보 출력
+      if (animal.name === "nubie") {
+        console.log("Nubie 모델 위치:", {
+          name: animal.name,
+          animalLongitude,
+          animalLatitude,
+          mainGate: { lat: mainGate.latitude, lng: mainGate.longitude },
+          offset: { lat: animal.offsetLat, lng: animal.offsetLng },
+          useAbsolutePosition: animal.useAbsolutePosition || false,
+          scale: animal.scale || 5,
+        });
+      }
 
       const animalLayer = create3DLayer(
         getModelPath(`${animal.name}.glb`),
@@ -908,11 +987,8 @@ function FirstPersonMapView({
 
   useEffect(() => {
     if (map.current) {
-      // 정문 위치로 설정
-      const mainGate = zooAreas.find((area) => area.id === "main-gate");
-      if (mainGate) {
-        map.current.setCenter([mainGate.longitude, mainGate.latitude]);
-      } else {
+      // 실제 사용자 위치로 설정
+      if (userPosition && userPosition.latitude && userPosition.longitude) {
         map.current.setCenter([userPosition.longitude, userPosition.latitude]);
       }
       addMarkers();
@@ -1040,21 +1116,28 @@ function FirstPersonMapView({
         <button
           className="my-location-btn"
           onClick={() => {
-            const mainGate = zooAreas.find((area) => area.id === "main-gate");
-            if (mainGate && map.current) {
+            // 현재 GPS 위치로 이동
+            if (
+              userPosition &&
+              userPosition.latitude &&
+              userPosition.longitude &&
+              map.current
+            ) {
               map.current.easeTo({
-                center: [mainGate.longitude, mainGate.latitude],
+                center: [userPosition.longitude, userPosition.latitude],
                 zoom: 19,
                 duration: 1000,
               });
               setCharacterPosition({
-                latitude: mainGate.latitude,
-                longitude: mainGate.longitude,
+                latitude: userPosition.latitude,
+                longitude: userPosition.longitude,
               });
               characterPositionRef.current = {
-                latitude: mainGate.latitude,
-                longitude: mainGate.longitude,
+                latitude: userPosition.latitude,
+                longitude: userPosition.longitude,
               };
+            } else {
+              console.warn("GPS 위치를 사용할 수 없습니다.");
             }
           }}
           title="내 위치로"

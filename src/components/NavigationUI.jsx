@@ -213,7 +213,7 @@ function NavigationUI({
                     </button>
                     <p className="route-description">
                       {selectedDestinations.length === 1
-                        ? "정문에서 선택한 목적지까지 경로를 안내합니다"
+                        ? "현재 위치에서 선택한 목적지까지 경로를 안내합니다"
                         : "이벤트 시간과 혼잡도를 고려한 최적 경로를 추천합니다"}
                     </p>
                   </div>
@@ -452,7 +452,7 @@ function NavigationUI({
                 </button>
                 <p className="navigation-description">
                   {selectedDestinations.length === 1
-                    ? "정문에서 선택하신 장소로 안내합니다"
+                    ? "현재 위치에서 선택하신 장소로 안내합니다"
                     : `선택하신 ${selectedDestinations.length}개 장소를 최적 순서로 안내합니다`}
                 </p>
               </div>

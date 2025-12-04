@@ -13,6 +13,7 @@ import {
   recommendRoute,
   checkEventAttendance,
   gpsToPosition,
+  calculateDistance,
   zooAreas,
 } from "./data/mockData";
 import "./App.css";
@@ -46,6 +47,60 @@ function App() {
   const lastMoveTime = useRef(0);
   const savedUserPositionRef = useRef(null); // navigation 시작 전 위치 저장
   const originalRecommendedRouteRef = useRef(null); // 원본 경로 저장 (혼잡도 재탐색 취소 시 복원용)
+
+  // 실제 GPS 위치 가져오기 (우선순위 높음)
+  useEffect(() => {
+    if (navigator.geolocation) {
+      // 즉시 현재 위치 가져오기 시도
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log("✅ 실제 GPS 위치 가져옴:", latitude, longitude);
+          setUserPosition({ latitude, longitude });
+        },
+        (error) => {
+          console.warn("⚠️ GPS 위치를 가져올 수 없습니다:", error.message);
+          console.log("기본 위치를 사용합니다.");
+          // GPS 실패 시 기본값(currentLocation) 유지
+        },
+        {
+          enableHighAccuracy: true, // 고정밀도 활성화
+          timeout: 15000, // 타임아웃 증가 (15초)
+          maximumAge: 0, // 캐시된 위치 사용 안 함
+        }
+      );
+
+      // 위치 업데이트 지속 감시 (실시간 위치 추적)
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const accuracy = position.coords.accuracy; // 위치 정확도 (미터)
+          console.log(
+            `📍 GPS 위치 업데이트: ${latitude}, ${longitude} (정확도: ${accuracy.toFixed(
+              0
+            )}m)`
+          );
+          setUserPosition({ latitude, longitude });
+        },
+        (error) => {
+          console.warn("GPS 위치 업데이트 실패:", error.message);
+        },
+        {
+          enableHighAccuracy: true, // 고정밀도 활성화
+          timeout: 10000,
+          maximumAge: 5000, // 5초 이내 캐시된 위치 허용
+        }
+      );
+
+      return () => {
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+        }
+      };
+    } else {
+      console.warn("❌ 이 브라우저는 Geolocation API를 지원하지 않습니다.");
+    }
+  }, []);
 
   // 스플래시 화면 타이머
   useEffect(() => {
@@ -120,24 +175,45 @@ function App() {
 
       setActiveRouteIndex(nextIndex);
 
+      // userPosition 유효성 검사
+      if (!userPosition || !userPosition.latitude || !userPosition.longitude) {
+        console.warn("GPS 위치가 없어 경로를 생성할 수 없습니다.");
+        return;
+      }
+
       const path = findOptimalPath(currentDest.id, nextDest.id, true);
 
       if (path) {
-        setCurrentPath(path);
-      } else {
-        const mainGate = zooAreas.find((area) => area.id === "main-gate");
-        const startPosition = mainGate
-          ? { latitude: mainGate.latitude, longitude: mainGate.longitude }
-          : userPosition;
-        const fallbackPath = {
+        // 경로의 시작점을 현재 GPS 위치로 교체
+        const updatedPath = {
+          ...path,
           areas: [
             {
-              ...startPosition,
+              latitude: userPosition.latitude,
+              longitude: userPosition.longitude,
               id: "current-position",
               name: "현재 위치",
               position: gpsToPosition(
-                startPosition.latitude,
-                startPosition.longitude
+                userPosition.latitude,
+                userPosition.longitude
+              ),
+            },
+            ...path.areas.slice(1), // 첫 번째 지점(이전 목적지) 제외하고 나머지 포함
+          ],
+        };
+        setCurrentPath(updatedPath);
+      } else {
+        // 현재 GPS 위치를 시작점으로 사용
+        const fallbackPath = {
+          areas: [
+            {
+              latitude: userPosition.latitude,
+              longitude: userPosition.longitude,
+              id: "current-position",
+              name: "현재 위치",
+              position: gpsToPosition(
+                userPosition.latitude,
+                userPosition.longitude
               ),
             },
             nextDest,
@@ -337,15 +413,43 @@ function App() {
         const nextDest = recommendedRoute[nextIndex];
         setActiveRouteIndex(nextIndex);
 
+        // userPosition 유효성 검사
+        if (
+          !userPosition ||
+          !userPosition.latitude ||
+          !userPosition.longitude
+        ) {
+          console.warn("GPS 위치가 없어 경로를 생성할 수 없습니다.");
+          return;
+        }
+
         const path = findOptimalPath(currentDest.id, nextDest.id, true);
 
         if (path) {
-          setCurrentPath(path);
+          // 경로의 시작점을 현재 GPS 위치로 교체
+          const updatedPath = {
+            ...path,
+            areas: [
+              {
+                latitude: userPosition.latitude,
+                longitude: userPosition.longitude,
+                id: "current-position",
+                name: "현재 위치",
+                position: gpsToPosition(
+                  userPosition.latitude,
+                  userPosition.longitude
+                ),
+              },
+              ...path.areas.slice(1), // 첫 번째 지점(이전 목적지) 제외하고 나머지 포함
+            ],
+          };
+          setCurrentPath(updatedPath);
         } else {
           const fallbackPath = {
             areas: [
               {
-                ...userPosition,
+                latitude: userPosition.latitude,
+                longitude: userPosition.longitude,
                 id: "current-position",
                 name: "현재 위치",
                 position: gpsToPosition(
@@ -996,42 +1100,58 @@ function App() {
                       !currentPath.areas ||
                       currentPath.areas.length === 0
                     ) {
-                      // 기존 경로가 없으면 새로 계산
+                      // userPosition 유효성 검사
+                      if (
+                        !userPosition ||
+                        !userPosition.latitude ||
+                        !userPosition.longitude
+                      ) {
+                        alert(
+                          "GPS 위치를 가져올 수 없습니다. 위치 권한을 확인해주세요."
+                        );
+                        setShowTravelConfirmModal(null);
+                        return;
+                      }
+
+                      // 기존 경로가 없으면 새로 계산 (현재 GPS 위치에서 시작)
                       const firstDest = validRoute[0];
-                      const path = findOptimalPath(
-                        "main-gate",
-                        firstDest.id,
-                        true
+
+                      // 현재 위치에서 목적지까지 직접 경로 생성
+                      const distance = calculateDistance(
+                        userPosition.latitude,
+                        userPosition.longitude,
+                        firstDest.latitude,
+                        firstDest.longitude
                       );
 
-                      if (path) {
-                        setCurrentPath(path);
-                      } else {
-                        const fallbackPath = {
-                          areas: [
-                            {
-                              ...userPosition,
-                              id: "current-position",
-                              name: "현재 위치",
-                              position: gpsToPosition(
-                                userPosition.latitude,
-                                userPosition.longitude
-                              ),
-                            },
-                            firstDest,
-                          ],
-                          totalDistance: firstDest.distance || 0,
-                          estimatedTime: Math.ceil(
-                            (firstDest.distance || 0) / 67
-                          ),
-                        };
-                        setCurrentPath(fallbackPath);
-                      }
+                      const path = {
+                        areas: [
+                          {
+                            latitude: userPosition.latitude,
+                            longitude: userPosition.longitude,
+                            id: "current-position",
+                            name: "현재 위치",
+                            position: gpsToPosition(
+                              userPosition.latitude,
+                              userPosition.longitude
+                            ),
+                          },
+                          firstDest,
+                        ],
+                        totalDistance: Math.round(distance),
+                        estimatedTime: Math.ceil(distance / 67),
+                      };
+                      setCurrentPath(path);
                     }
                     // currentPath가 이미 있으면 그대로 재사용 (setCurrentPath 호출 안 함)
                     // navigation 페이지로 이동 전 원래 위치 저장
-                    savedUserPositionRef.current = { ...userPosition };
-                    // navigation 페이지로 이동 (userPosition은 변경하지 않음 - navigation 페이지 내부에서 정문 위치 사용)
+                    savedUserPositionRef.current = userPosition
+                      ? {
+                          latitude: userPosition.latitude,
+                          longitude: userPosition.longitude,
+                        }
+                      : null;
+                    // navigation 페이지로 이동 (현재 GPS 위치 사용)
                     setCurrentPage("navigation");
                     window.history.pushState(
                       { page: "navigation" },
@@ -1121,11 +1241,31 @@ function App() {
                       setRecommendedRoute(newRecommendations);
                       setActiveRouteIndex(0);
                       if (newRecommendations && newRecommendations.length > 0) {
+                        // userPosition 유효성 검사
+                        if (
+                          !userPosition ||
+                          !userPosition.latitude ||
+                          !userPosition.longitude
+                        ) {
+                          console.warn(
+                            "GPS 위치가 없어 경로를 생성할 수 없습니다."
+                          );
+                          return;
+                        }
+
                         const firstDest = newRecommendations[0];
+                        // 현재 위치에서 첫 번째 목적지까지의 거리 계산
+                        const distance = calculateDistance(
+                          userPosition.latitude,
+                          userPosition.longitude,
+                          firstDest.latitude,
+                          firstDest.longitude
+                        );
                         const path = {
                           areas: [
                             {
-                              ...userPosition,
+                              latitude: userPosition.latitude,
+                              longitude: userPosition.longitude,
                               id: "current-position",
                               name: "현재 위치",
                               position: gpsToPosition(
@@ -1135,10 +1275,8 @@ function App() {
                             },
                             firstDest,
                           ],
-                          totalDistance: firstDest.distance || 0,
-                          estimatedTime: Math.ceil(
-                            (firstDest.distance || 0) / 67
-                          ),
+                          totalDistance: Math.round(distance),
+                          estimatedTime: Math.ceil(distance / 67),
                         };
                         setCurrentPath(path);
                       }
@@ -1149,6 +1287,18 @@ function App() {
                   <button
                     className="btn-primary"
                     onClick={() => {
+                      // userPosition 유효성 검사
+                      if (
+                        !userPosition ||
+                        !userPosition.latitude ||
+                        !userPosition.longitude
+                      ) {
+                        console.warn(
+                          "GPS 위치가 없어 경로를 생성할 수 없습니다."
+                        );
+                        return;
+                      }
+
                       setShowNextDestinationModal(false);
                       const nextIndex = activeRouteIndex + 1;
                       setActiveRouteIndex(nextIndex);
@@ -1156,7 +1306,8 @@ function App() {
                       const path = {
                         areas: [
                           {
-                            ...userPosition,
+                            latitude: userPosition.latitude,
+                            longitude: userPosition.longitude,
                             id: "current-position",
                             name: "현재 위치",
                             position: gpsToPosition(

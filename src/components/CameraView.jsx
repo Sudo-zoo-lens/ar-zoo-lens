@@ -69,13 +69,31 @@ function CameraView({
           }
         }
 
-        // 카메라 최적화: 해상도 낮춰서 버벅거림 개선
+        // 모바일 기기 감지
+        const isMobile =
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent
+          );
+        const isLowEndDevice =
+          navigator.hardwareConcurrency <= 4 ||
+          (navigator.deviceMemory && navigator.deviceMemory <= 4);
+
+        // 카메라 최적화: 모바일/저사양 기기에서 더 낮은 해상도 사용
         const constraints = {
           video: {
             facingMode: "environment",
-            width: { ideal: 480, max: 640 }, // 해상도 더 낮춤 (성능 최적화)
-            height: { ideal: 360, max: 480 }, // 해상도 더 낮춤
-            frameRate: { ideal: 15, max: 20 }, // 프레임레이트 더 낮춤 (배터리 및 성능 최적화)
+            width:
+              isMobile || isLowEndDevice
+                ? { ideal: 320, max: 480 } // 모바일: 더 낮은 해상도
+                : { ideal: 480, max: 640 }, // 데스크톱: 기존 해상도
+            height:
+              isMobile || isLowEndDevice
+                ? { ideal: 240, max: 360 } // 모바일: 더 낮은 해상도
+                : { ideal: 360, max: 480 }, // 데스크톱: 기존 해상도
+            frameRate:
+              isMobile || isLowEndDevice
+                ? { ideal: 10, max: 15 } // 모바일: 더 낮은 프레임레이트
+                : { ideal: 15, max: 20 }, // 데스크톱: 기존 프레임레이트
           },
           audio: false,
         };
@@ -83,10 +101,17 @@ function CameraView({
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          streamRef.current = stream;
-          setHasCamera(true);
-          setError(null);
+          try {
+            videoRef.current.srcObject = stream;
+            streamRef.current = stream;
+            setHasCamera(true);
+            setError(null);
+          } catch (streamError) {
+            console.error("Stream assignment error:", streamError);
+            // 스트림 할당 실패 시 정리
+            stream.getTracks().forEach((track) => track.stop());
+            throw streamError;
+          }
         }
       } catch (err) {
         console.error("Camera error:", err);
