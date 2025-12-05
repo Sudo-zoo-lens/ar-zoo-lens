@@ -189,7 +189,13 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
         useAbsolutePosition: true,
         scale: 3.5,
       },
-      { name: "nubie", offsetLng: 0, offsetLat: -0.00015, scale: 3.5 },
+      {
+        name: "nubie",
+        latitude: mainGate.latitude + 0.001,
+        longitude: mainGate.longitude + 0.0002,
+        useAbsolutePosition: true,
+        scale: 3.5,
+      },
     ];
 
     // 모델 로딩을 순차적으로 처리하여 메모리 부하 분산 (배포 환경 최적화)
@@ -313,6 +319,13 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
               scale: targetScale, // scale 정보도 저장
               isLoaded: true, // 로드 완료 플래그
             };
+
+            console.log(`[AR3DModels] 모델 로드 완료: ${animal.name}`, {
+              latitude: modelLatitude,
+              longitude: modelLongitude,
+              scale: targetScale,
+              useAbsolutePosition: animal.useAbsolutePosition || false,
+            });
           } catch (err) {
             console.error(`동물 모델 처리 오류 (${animal.name}):`, err);
             return; // 에러 발생 시 이 모델만 건너뛰기
@@ -412,6 +425,19 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
                 }
               }
 
+              // 좌표 유효성 검사
+              if (
+                !modelData.area ||
+                isNaN(modelData.area.latitude) ||
+                isNaN(modelData.area.longitude)
+              ) {
+                console.warn(
+                  `모델 ${key}의 좌표가 유효하지 않음:`,
+                  modelData.area
+                );
+                return null;
+              }
+
               const distance = calculateDistance(
                 currentPos.latitude,
                 currentPos.longitude,
@@ -427,6 +453,17 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
             })
             .filter((item) => item !== null) // null 제거
             .sort((a, b) => a.distance - b.distance); // 거리순 정렬
+
+          // 디버깅: 모델 거리 정보 출력
+          if (modelsWithDistance.length > 0) {
+            console.log(
+              `[AR3DModels] 로드된 모델 수: ${modelsWithDistance.length}`,
+              modelsWithDistance.map((m) => ({
+                name: m.key,
+                distance: Math.round(m.distance),
+              }))
+            );
+          }
 
           // 모바일에서는 1개만, 데스크톱에서는 2개 표시
           const maxModels = isMobile || isLowEndDevice ? 1 : 2;
@@ -471,8 +508,28 @@ function AR3DModels({ userPosition, characterPosition, onRendererReady }) {
               currentPos.longitude
             );
 
+            // 위치 유효성 검사
+            if (isNaN(position.x) || isNaN(position.y) || isNaN(position.z)) {
+              console.warn(`모델 ${key}의 3D 위치가 유효하지 않음:`, position);
+              return;
+            }
+
             modelData.model.position.copy(position);
             modelData.model.visible = true;
+
+            // 디버깅: 표시되는 모델 정보
+            console.log(`[AR3DModels] 모델 표시: ${key}`, {
+              distance: Math.round(distance),
+              position: {
+                x: position.x.toFixed(2),
+                y: position.y.toFixed(2),
+                z: position.z.toFixed(2),
+              },
+              gps: {
+                lat: modelData.area.latitude,
+                lng: modelData.area.longitude,
+              },
+            });
 
             // 카메라를 향하도록 회전 (선택사항)
             if (modelData.type === "animal") {

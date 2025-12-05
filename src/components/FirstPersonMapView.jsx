@@ -656,9 +656,14 @@ function FirstPersonMapView({
           loader.load(
             modelPath,
             (gltf) => {
-              this.model = gltf.scene;
-              this.scene.add(this.model);
-              map.triggerRepaint();
+              try {
+                this.model = gltf.scene;
+                this.scene.add(this.model);
+                console.log(`3D 모델 로드 성공: ${layerId}`, modelPath);
+                map.triggerRepaint();
+              } catch (loadError) {
+                console.error(`3D 모델 추가 오류 (${layerId}):`, loadError);
+              }
             },
             (progress) => {
               // 로딩 진행 상황 (선택사항)
@@ -668,6 +673,7 @@ function FirstPersonMapView({
                 `3D 모델 로딩 오류 (${layerId}, ${modelPath}):`,
                 error
               );
+              console.error(`모델 경로: ${modelPath}, 레이어 ID: ${layerId}`);
             }
           );
 
@@ -675,6 +681,8 @@ function FirstPersonMapView({
           this.longitude = longitude;
           this.latitude = latitude;
           this.useAbsolutePosition = useAbsolutePosition;
+          this.layerId = layerId; // 디버깅을 위해 layerId 저장
+          this.layerId = layerId; // 디버깅을 위해 layerId 저장
 
           this.renderer = new THREE.WebGLRenderer({
             canvas: map.getCanvas(),
@@ -692,29 +700,61 @@ function FirstPersonMapView({
           if (this.useAbsolutePosition) {
             // 절대 위치 사용 시 유효성 검사
             if (isNaN(this.longitude) || isNaN(this.latitude)) {
+              console.warn(
+                `[${this.layerId || "unknown"}] 유효하지 않은 절대 좌표:`,
+                this.longitude,
+                this.latitude
+              );
               return; // 유효하지 않은 좌표면 렌더링하지 않음
             }
             modelOrigin = [this.longitude, this.latitude];
           } else {
             const currentCharPos = characterPositionRef.current;
             // characterPosition이 유효한지 확인
-            if (
-              !currentCharPos ||
+            if (!currentCharPos) {
+              // characterPosition이 없으면 기본값 사용 (정문 위치)
+              const mainGate = zooAreas.find((area) => area.id === "main-gate");
+              if (mainGate) {
+                modelOrigin = [
+                  mainGate.longitude + (this.longitude || 0),
+                  mainGate.latitude + (this.latitude || 0),
+                ];
+              } else {
+                console.warn(
+                  `[${
+                    this.layerId || "unknown"
+                  }] characterPosition과 mainGate 모두 없음`
+                );
+                return;
+              }
+            } else if (
               isNaN(currentCharPos.longitude) ||
               isNaN(currentCharPos.latitude) ||
               isNaN(this.longitude) ||
               isNaN(this.latitude)
             ) {
+              console.warn(
+                `[${this.layerId || "unknown"}] 유효하지 않은 상대 좌표:`,
+                {
+                  charPos: currentCharPos,
+                  offset: { lng: this.longitude, lat: this.latitude },
+                }
+              );
               return; // 유효하지 않은 좌표면 렌더링하지 않음
+            } else {
+              modelOrigin = [
+                currentCharPos.longitude + this.longitude,
+                currentCharPos.latitude + this.latitude,
+              ];
             }
-            modelOrigin = [
-              currentCharPos.longitude + this.longitude,
-              currentCharPos.latitude + this.latitude,
-            ];
           }
 
           // 최종 좌표 유효성 검사
-          if (isNaN(modelOrigin[0]) || isNaN(modelOrigin[1])) {
+          if (!modelOrigin || isNaN(modelOrigin[0]) || isNaN(modelOrigin[1])) {
+            console.warn(
+              `[${this.layerId || "unknown"}] 최종 좌표가 유효하지 않음:`,
+              modelOrigin
+            );
             return; // 유효하지 않은 좌표면 렌더링하지 않음
           }
 
@@ -868,35 +908,41 @@ function FirstPersonMapView({
     }
 
     // 동물 모델들을 정문 근처에 배치 (정문 위치 기준으로 작은 오프셋)
+    // 모든 동물 모델을 절대 좌표로 변환하여 안정적으로 표시
     const animalOffsets = [
       {
         name: "camel",
-        offsetLng: 0.00567590470046,
-        offsetLat: -0.000311138782496,
+        latitude: mainGate.latitude - 0.000311138782496,
+        longitude: mainGate.longitude + 0.00567590470046,
+        useAbsolutePosition: true,
         scale: 5,
       },
       {
         name: "dolphin",
-        offsetLng: 0.0021115776083,
-        offsetLat: 0.00001113088987,
+        latitude: mainGate.latitude + 0.00001113088987,
+        longitude: mainGate.longitude + 0.0021115776083,
+        useAbsolutePosition: true,
         scale: 5,
       },
       {
         name: "green-dinosaur",
-        offsetLng: 0.00338825234588,
-        offsetLat: -0.00015644021445,
+        latitude: mainGate.latitude - 0.00015644021445,
+        longitude: mainGate.longitude + 0.00338825234588,
+        useAbsolutePosition: true,
         scale: 5,
       },
       {
         name: "meerkat",
-        offsetLng: 0.00676177629825,
-        offsetLat: -0.00076464766094,
+        latitude: mainGate.latitude - 0.00076464766094,
+        longitude: mainGate.longitude + 0.00676177629825,
+        useAbsolutePosition: true,
         scale: 1,
       }, // 미어켓 크기 줄임
       {
         name: "orange-dinosaur",
-        offsetLng: 0.00348825234588,
-        offsetLat: -0.00015644021445,
+        latitude: mainGate.latitude - 0.00015644021445,
+        longitude: mainGate.longitude + 0.00348825234588,
+        useAbsolutePosition: true,
         scale: 5,
       },
       {
@@ -906,7 +952,13 @@ function FirstPersonMapView({
         useAbsolutePosition: true,
         scale: 5,
       },
-      { name: "nubie", offsetLng: 0.0002, offsetLat: 0.001, scale: 5 }, // 북쪽으로 이동
+      {
+        name: "nubie",
+        latitude: mainGate.latitude + 0.001,
+        longitude: mainGate.longitude + 0.0002,
+        useAbsolutePosition: true,
+        scale: 5,
+      }, // 북쪽으로 이동
     ];
 
     animalOffsets.forEach((animal) => {
@@ -920,18 +972,17 @@ function FirstPersonMapView({
           ? animal.latitude
           : mainGate.latitude + (animal.offsetLat || 0);
 
-      // 디버깅: nubie 모델 정보 출력
-      if (animal.name === "nubie") {
-        console.log("Nubie 모델 위치:", {
-          name: animal.name,
-          animalLongitude,
-          animalLatitude,
-          mainGate: { lat: mainGate.latitude, lng: mainGate.longitude },
-          offset: { lat: animal.offsetLat, lng: animal.offsetLng },
-          useAbsolutePosition: animal.useAbsolutePosition || false,
-          scale: animal.scale || 5,
-        });
-      }
+      // 디버깅: 모든 동물 모델 정보 출력
+      console.log(`동물 모델 추가: ${animal.name}`, {
+        name: animal.name,
+        animalLongitude,
+        animalLatitude,
+        mainGate: { lat: mainGate.latitude, lng: mainGate.longitude },
+        offset: { lat: animal.offsetLat, lng: animal.offsetLng },
+        useAbsolutePosition: animal.useAbsolutePosition || false,
+        scale: animal.scale || 5,
+        modelPath: getModelPath(`${animal.name}.glb`),
+      });
 
       const animalLayer = create3DLayer(
         getModelPath(`${animal.name}.glb`),
@@ -941,7 +992,13 @@ function FirstPersonMapView({
         animal.scale || 5, // 각 동물의 scale 사용
         animal.useAbsolutePosition || false
       );
-      map.current.addLayer(animalLayer);
+
+      try {
+        map.current.addLayer(animalLayer);
+        console.log(`레이어 추가 성공: 3d-model-${animal.name}`);
+      } catch (layerError) {
+        console.error(`레이어 추가 실패: 3d-model-${animal.name}`, layerError);
+      }
     });
 
     // 리니워니 모델을 캐릭터 위치에 배치 (움직이는 '나')
